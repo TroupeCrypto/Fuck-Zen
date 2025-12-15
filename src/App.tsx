@@ -235,40 +235,61 @@ const App: React.FC = () => {
   const selectedTasks = tasks.filter(t => t.executiveId === selectedExecutiveId);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-gray-200 p-4 lg:p-8 font-sans selection:bg-cyan-900 selection:text-cyan-100 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200 p-4 lg:p-8 font-sans selection:bg-cyan-900 selection:text-cyan-100 relative">
+      
+      {/* Background grid pattern */}
+      <div className="fixed inset-0 opacity-30 pointer-events-none" style={{
+        backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.03) 0%, transparent 50%)'
+      }} />
+      <div className="fixed inset-0 opacity-20 pointer-events-none" style={{
+        backgroundImage: 'linear-gradient(rgba(6,182,212,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.02) 1px, transparent 1px)',
+        backgroundSize: '60px 60px'
+      }} />
       
       {/* KTD OVERLAY */}
       {showKTD && <KTDConsole executives={executives} onClose={() => setShowKTD(false)} />}
 
       {/* Header */}
-      <header className="mb-8 border-b border-gray-800 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <header className="mb-10 border-b border-slate-800/60 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
         <div>
-          <h1 className="text-4xl font-black tracking-tighter text-white mb-1">
-            TROUPE <span className="text-cyan-500">INC.</span>
-          </h1>
-          <h2 className="text-sm font-mono text-gray-500 uppercase tracking-[0.2em]">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <span className="text-white font-black text-lg">T</span>
+            </div>
+            <h1 className="text-4xl font-black tracking-tight text-white">
+              TROUPE <span className="bg-gradient-to-r from-cyan-400 to-cyan-500 bg-clip-text text-transparent">INC.</span>
+            </h1>
+          </div>
+          <h2 className="text-sm font-mono text-slate-500 uppercase tracking-[0.25em] ml-[52px]">
             Executive War Room // Tier 1 Roundtable
           </h2>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-6">
           <div className="text-right hidden md:block">
-            <div className="text-xs font-mono text-gray-500">PROTOCOL</div>
-            <div className={`text-sm font-bold ${expansionActive ? 'text-red-500 animate-pulse' : 'text-cyan-500'}`}>
-                {expansionActive ? 'EXPANSION_ACTIVE' : 'EXPANSION_OVERNIGHT'}
+            <div className="text-[10px] font-mono text-slate-600 uppercase tracking-wider mb-1">Protocol Status</div>
+            <div className={`text-sm font-bold flex items-center justify-end gap-2 ${expansionActive ? 'text-red-400' : 'text-cyan-400'}`}>
+              <span className={`w-2 h-2 rounded-full ${expansionActive ? 'bg-red-500 animate-pulse' : 'bg-cyan-500'}`} />
+              {expansionActive ? 'EXPANSION_ACTIVE' : 'EXPANSION_OVERNIGHT'}
             </div>
           </div>
+          <div className="h-10 w-px bg-slate-800 hidden md:block" />
           <button 
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all
-            ${systemActive ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'border-gray-700 text-gray-600'}
+            className={`px-5 py-2.5 text-xs font-bold uppercase tracking-widest border rounded-lg transition-all duration-300
+            ${systemActive 
+              ? 'bg-gradient-to-r from-cyan-500/10 to-cyan-600/10 border-cyan-500/50 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]' 
+              : 'border-slate-700 text-slate-500 animate-pulse'}
             `}
           >
-            {systemActive ? 'System Online' : 'Initializing...'}
+            <span className="flex items-center gap-2">
+              {systemActive && <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />}
+              {systemActive ? 'System Online' : 'Initializing...'}
+            </span>
           </button>
         </div>
       </header>
 
       {/* Main Content Area - Swaps between Dashboard and Detail View */}
-      <main>
+      <main className="relative z-10">
         {selectedExecutive ? (
           <ExecutiveDetail 
             executive={selectedExecutive} 
@@ -288,58 +309,78 @@ const App: React.FC = () => {
             onBack={() => setSelectedExecutiveId(null)} 
           />
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
             
             {/* Left Column: Roster Grid (8 cols) */}
-            <div className="xl:col-span-8 space-y-6">
-              <div className="flex items-center justify-between mb-2">
-                 <h3 className="text-lg font-bold text-white flex items-center">
-                   <span className="w-2 h-2 bg-cyan-500 rounded-full mr-2 animate-pulse"></span>
-                   Active Roster ({executives.filter(e => e.status === ConnectionStatus.ACTIVE).length}/10)
-                 </h3>
-                 <span className="text-xs font-mono text-gray-600">PEER_REVIEW_FRAMEWORK_V2</span>
+            <div className="xl:col-span-8 space-y-8">
+              {/* Section Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                    </span>
+                    <h3 className="text-xl font-bold text-white">Active Roster</h3>
+                  </div>
+                  <span className="text-sm font-mono text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full">
+                    {executives.filter(e => e.status === ConnectionStatus.ACTIVE).length}/10
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-600 uppercase tracking-wider bg-slate-900/50 px-3 py-1.5 rounded border border-slate-800/50">
+                  PEER_REVIEW_FRAMEWORK_V2
+                </span>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {executives.map(exec => (
-                  <ExecutiveCard 
-                    key={exec.id} 
-                    data={exec} 
-                    onClick={setSelectedExecutiveId} 
-                  />
+              {/* Executive Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {executives.map((exec, index) => (
+                  <div key={exec.id} className="animate-fadeIn" style={{ animationDelay: `${index * 50}ms` }}>
+                    <ExecutiveCard 
+                      data={exec} 
+                      onClick={setSelectedExecutiveId} 
+                    />
+                  </div>
                 ))}
               </div>
 
               {/* Terminal & Command Input */}
-              <div className="mt-8 space-y-4">
-                <div className="flex justify-between items-end">
-                    <h3 className="text-sm font-mono text-gray-500 uppercase">Command Line Interface</h3>
-                    <span className="text-[10px] text-gray-600 font-mono">V.2.0.4 - SECURE</span>
+              <div className="mt-10 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-mono text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Command Line Interface
+                  </h3>
+                  <span className="text-[10px] text-slate-600 font-mono bg-slate-900/50 px-2 py-1 rounded border border-slate-800/50">V.2.0.4 - SECURE</span>
                 </div>
                 
                 <Terminal logs={logs} />
                 
                 {/* Command Input */}
-                <form onSubmit={handleSendCommand} className="flex gap-2">
+                <form onSubmit={handleSendCommand} className="flex gap-3">
                   <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500 font-mono text-lg">{'>'}</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-500 font-mono text-lg font-bold">❯</span>
                     <input 
                       type="text" 
                       value={commandInput}
                       onChange={(e) => setCommandInput(e.target.value)}
                       placeholder={pendingCommand ? "Confirm execution? (Y/N)" : "e.g.: initiate expansion OR assign: 004 high ..."}
-                      className={`w-full bg-black border rounded px-4 py-3 pl-8 font-mono text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-gray-700
-                        ${pendingCommand ? 'border-yellow-500/50 focus:border-yellow-500' : 'border-gray-800 focus:border-cyan-500'}
+                      className={`w-full bg-black/60 backdrop-blur-sm border rounded-xl px-5 py-4 pl-10 font-mono text-sm text-slate-200 focus:outline-none transition-all duration-300 placeholder-slate-600
+                        ${pendingCommand 
+                          ? 'border-amber-500/50 focus:border-amber-400 focus:shadow-[0_0_20px_rgba(245,158,11,0.15)]' 
+                          : 'border-slate-700/50 focus:border-cyan-500/50 focus:shadow-[0_0_20px_rgba(6,182,212,0.1)]'}
                       `}
                       autoFocus
                     />
                   </div>
                   <button 
                     type="submit"
-                    className={`px-6 py-2 border font-mono text-xs uppercase tracking-widest transition-all rounded
+                    className={`px-8 py-3 border font-mono text-xs uppercase tracking-widest transition-all duration-300 rounded-xl font-semibold
                       ${pendingCommand 
-                        ? 'bg-yellow-900/20 border-yellow-500/50 text-yellow-500 hover:bg-yellow-900/40' 
-                        : 'bg-gray-900 border-gray-700 hover:border-cyan-500 hover:text-cyan-400 text-gray-400'}
+                        ? 'bg-gradient-to-r from-amber-900/30 to-amber-800/30 border-amber-500/50 text-amber-400 hover:from-amber-900/50 hover:to-amber-800/50 shadow-[0_0_20px_rgba(245,158,11,0.15)]' 
+                        : 'bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700/50 hover:border-cyan-500/50 hover:text-cyan-400 text-slate-400 hover:shadow-[0_0_20px_rgba(6,182,212,0.1)]'}
                     `}
                   >
                     {pendingCommand ? 'CONFIRM' : 'EXECUTE'}
@@ -350,56 +391,71 @@ const App: React.FC = () => {
 
             {/* Right Column: The "File" or Map (4 cols) */}
             <div className="xl:col-span-4 flex flex-col gap-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-bold text-white">{expansionActive ? 'Tactical Operations' : 'Central Intelligence'}</h3>
-                <span className="text-xs font-mono text-gray-600">REF: {expansionActive ? 'EXPANSION_MAP' : 'FILE_001'}</span>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">{expansionActive ? 'Tactical Operations' : 'Central Intelligence'}</h3>
+                <span className="text-[10px] font-mono text-slate-600 bg-slate-900/50 px-3 py-1.5 rounded border border-slate-800/50">
+                  REF: {expansionActive ? 'EXPANSION_MAP' : 'FILE_001'}
+                </span>
               </div>
               
               {/* Conditional Rendering: File vs Map */}
-              <div className="sticky top-6">
-                
+              <div className="sticky top-6 space-y-5">
                 {expansionActive ? (
-                    <StrategyMap />
+                  <StrategyMap />
                 ) : (
-                    <FileViewer 
+                  <FileViewer 
                     sections={[
-                        FILE_001_IDENTITY,
-                        FILE_001_PROFILE,
-                        FILE_001_ASSESSMENT,
-                        FILE_001_RISK,
-                        FILE_001_PEER_REVIEW
+                      FILE_001_IDENTITY,
+                      FILE_001_PROFILE,
+                      FILE_001_ASSESSMENT,
+                      FILE_001_RISK,
+                      FILE_001_PEER_REVIEW
                     ]} 
-                    />
+                  />
                 )}
                 
-                <div className={`mt-4 p-4 border rounded transition-colors duration-500
-                    ${expansionActive ? 'border-cyan-900/30 bg-cyan-900/10' : 'border-yellow-900/30 bg-yellow-900/10'}
+                {/* Action Panel */}
+                <div className={`p-5 border rounded-xl transition-all duration-500 backdrop-blur-sm
+                  ${expansionActive 
+                    ? 'border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 to-slate-950/50' 
+                    : 'border-amber-500/20 bg-gradient-to-br from-amber-950/20 to-slate-950/50'}
                 `}>
-                  <h4 className={`text-xs font-bold uppercase mb-2 ${expansionActive ? 'text-cyan-500' : 'text-yellow-500'}`}>
-                    {expansionActive ? 'Status Report' : 'Action Required'}
-                  </h4>
-                  <p className="text-gray-400 text-sm leading-relaxed mb-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`w-2 h-2 rounded-full ${expansionActive ? 'bg-cyan-500' : 'bg-amber-500 animate-pulse'}`} />
+                    <h4 className={`text-xs font-bold uppercase tracking-wider ${expansionActive ? 'text-cyan-400' : 'text-amber-400'}`}>
+                      {expansionActive ? 'Status Report' : 'Action Required'}
+                    </h4>
+                  </div>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-4">
                     {expansionActive 
-                        ? "Expansion protocol active. Global nodes synchronizing. All executives instantiated." 
-                        : "Roster fully instantiated. Peer Review Framework reset. Waiting for CVO command to commence expansion."
+                      ? "Expansion protocol active. Global nodes synchronizing. All executives instantiated." 
+                      : "Roster fully instantiated. Peer Review Framework reset. Waiting for CVO command to commence expansion."
                     }
                   </p>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {!expansionActive && (
-                        <button 
-                            onClick={() => setPendingCommand('initiate expansion')}
-                            className="w-full py-2 bg-yellow-900/20 border border-yellow-700/50 text-yellow-500 hover:bg-yellow-900/40 hover:text-yellow-400 font-mono text-xs uppercase tracking-widest rounded transition-all"
-                        >
-                            Initiate Expansion
-                        </button>
+                      <button 
+                        onClick={() => setPendingCommand('initiate expansion')}
+                        className="w-full py-3 bg-gradient-to-r from-amber-900/30 to-amber-800/20 border border-amber-600/40 text-amber-400 hover:from-amber-900/50 hover:to-amber-800/40 hover:border-amber-500/60 font-mono text-xs uppercase tracking-widest rounded-lg transition-all duration-300 flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Initiate Expansion
+                      </button>
                     )}
                     <button 
-                        onClick={() => setShowKTD(true)}
-                        className="w-full py-2 bg-red-900/10 border border-red-900/30 text-red-500 hover:bg-red-900/20 font-mono text-xs uppercase tracking-widest rounded transition-all flex justify-between px-4 items-center group"
+                      onClick={() => setShowKTD(true)}
+                      className="w-full py-3 bg-gradient-to-r from-red-950/30 to-red-900/20 border border-red-700/30 text-red-400 hover:from-red-950/50 hover:to-red-900/40 hover:border-red-600/50 font-mono text-xs uppercase tracking-widest rounded-lg transition-all duration-300 flex justify-between px-4 items-center group"
                     >
-                        <span>KTD Console</span>
-                        <span className="text-[10px] opacity-50 group-hover:opacity-100">[RESTRICTED]</span>
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        KTD Console
+                      </span>
+                      <span className="text-[10px] opacity-50 group-hover:opacity-100 transition-opacity">[RESTRICTED]</span>
                     </button>
                   </div>
                 </div>

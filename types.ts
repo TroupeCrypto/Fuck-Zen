@@ -120,9 +120,32 @@ export interface ChatMessage {
   status: 'sent' | 'delivered' | 'read';
 }
 
+// --- ORGANIZATIONAL HIERARCHY ---
+// Structure: Division → Department → Function
+// This hierarchy supports enterprise-level organization with proper firewalling and governance
+
+export type OperationalMode = 'execution' | 'strategy' | 'hybrid';
+export type RegulatoryStatus = 'standard' | 'regulated' | 'highly-regulated';
+
+export interface Division {
+  id: string;
+  name: string;
+  description: string;
+  operationalMode: OperationalMode;
+  regulatoryStatus: RegulatoryStatus;
+  requiresFirewall: boolean;  // For regulated industries requiring isolation
+  requiresAuditLog: boolean;  // For compliance tracking
+}
+
 export interface Department {
   id: string;
   name: string;
   description: string;
   category: string;
+  // Hierarchy extensions
+  divisionId?: string;        // Parent division
+  operationalMode?: OperationalMode;
+  regulatoryStatus?: RegulatoryStatus;
+  isFunction?: boolean;       // True if this is a sub-function that rolls up to a parent department
+  parentDepartmentId?: string; // Parent department for functions
 }

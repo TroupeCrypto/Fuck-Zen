@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   INITIAL_ROSTER, 
@@ -6,24 +8,28 @@ import {
   FILE_001_ASSESSMENT, 
   FILE_001_RISK,
   FILE_001_PEER_REVIEW
-} from './constants';
-import { Executive, LogEntry, ConnectionStatus, Task } from './types';
-import ExecutiveCard from './components/ExecutiveCard';
-import Terminal from './components/Terminal';
-import FileViewer from './components/FileViewer';
-import ExecutiveDetail from './components/ExecutiveDetail';
-import StrategyMap from './components/StrategyMap';
-import KTDConsole from './components/KTDConsole';
+} from '../constants';
+import { Executive, LogEntry, ConnectionStatus, Task } from '../types';
+import ExecutiveCard from '../components/ExecutiveCard';
+import Terminal from '../components/Terminal';
+import FileViewer from '../components/FileViewer';
+import ExecutiveDetail from '../components/ExecutiveDetail';
+import StrategyMap from '../components/StrategyMap';
+import KTDConsole from '../components/KTDConsole';
 
-const App: React.FC = () => {
+export default function HomePage() {
   const [executives, setExecutives] = useState<Executive[]>(INITIAL_ROSTER);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [systemActive, setSystemActive] = useState(false);
+  const [expansionActive, setExpansionActive] = useState(false);
+  const [showKTD, setShowKTD] = useState(false);
+  const [selectedExecutiveId, setSelectedExecutiveId] = useState<string | null>(null);
+  const [commandInput, setCommandInput] = useState('');
+  const [pendingCommand, setPendingCommand] = useState<string | null>(null);
 
-  // Load tasks on client
+  // Load tasks from localStorage on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
     try {
       const saved = localStorage.getItem('troupe_tasks');
       if (saved) setTasks(JSON.parse(saved));
@@ -31,17 +37,6 @@ const App: React.FC = () => {
       console.error("Failed to load tasks", e);
     }
   }, []);
-
-  const [systemActive, setSystemActive] = useState(false);
-  const [expansionActive, setExpansionActive] = useState(false);
-  const [showKTD, setShowKTD] = useState(false);
-  
-  // Navigation State
-  const [selectedExecutiveId, setSelectedExecutiveId] = useState<string | null>(null);
-  
-  // Command Line State
-  const [commandInput, setCommandInput] = useState('');
-  const [pendingCommand, setPendingCommand] = useState<string | null>(null);
 
   // Helper to add logs
   const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
@@ -120,7 +115,7 @@ const App: React.FC = () => {
             setTimeout(() => {
                 setExecutives(prev => prev.map(e => e.id === exec.id ? { ...e, status: ConnectionStatus.ACTIVE } : e));
                 addLog(`Executive Override: ${exec.name} [ACTIVE]`, 'success');
-            }, 1000 + (i * 400)); // Faster wake up
+            }, 1000 + (i * 400));
         });
     }, 1500);
   };
@@ -128,12 +123,10 @@ const App: React.FC = () => {
   const executeCommand = (cmd: string) => {
     const cmdLower = cmd.toLowerCase();
 
-    // Command: assign: [id] [priority?] [description]
     if (cmdLower.startsWith('assign:')) {
       const parts = cmd.split(' ');
       const targetId = parts[1];
       
-      // Check for priority keyword
       let priority: 'high' | 'medium' | 'low' = 'medium';
       let descriptionParts = parts.slice(2);
       
@@ -186,10 +179,8 @@ const App: React.FC = () => {
     const cmd = commandInput.trim();
     addLog(`> [USER]: ${cmd}`, 'info');
 
-    // If awaiting confirmation
     if (pendingCommand) {
       if (cmd.toLowerCase() === 'y' || cmd.toLowerCase() === 'yes') {
-        // Special check if the pending command was expansion
         if (pendingCommand.toLowerCase().includes('initiate expansion')) {
              handleExpansionProtocol();
         } else {
@@ -204,7 +195,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // Safety Interlock for Critical Commands
     if (cmd.toLowerCase().startsWith('assign:') || cmd.toLowerCase().includes('initiate')) {
       setPendingCommand(cmd);
       addLog('SYSTEM: Critical command received. Execute? (Y/N)', 'warning');
@@ -212,7 +202,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // Non-critical commands execute immediately
     executeCommand(cmd);
     setCommandInput('');
   };
@@ -224,7 +213,6 @@ const App: React.FC = () => {
       }
       return t;
     }));
-    // Find task for log
     const t = tasks.find(t => t.id === taskId);
     if (t) {
       addLog(`Task Completed: [${t.description}] by Executive ${t.executiveId}`, 'success');
@@ -235,7 +223,7 @@ const App: React.FC = () => {
   const selectedTasks = tasks.filter(t => t.executiveId === selectedExecutiveId);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-gray-200 p-4 lg:p-8 font-sans selection:bg-cyan-900 selection:text-cyan-100 relative">
+    <div className="min-h-screen bg-[#050505] text-gray-200 p-4 lg:p-8 font-sans selection:bg-cyan-900 selection:text-cyan-100 relative">
       
       {/* KTD OVERLAY */}
       {showKTD && <KTDConsole executives={executives} onClose={() => setShowKTD(false)} />}
@@ -258,7 +246,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <button 
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border transition-all rounded
             ${systemActive ? 'bg-cyan-500/10 border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'border-gray-700 text-gray-600'}
             `}
           >
@@ -267,7 +255,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Area - Swaps between Dashboard and Detail View */}
+      {/* Main Content Area */}
       <main>
         {selectedExecutive ? (
           <ExecutiveDetail 
@@ -411,6 +399,4 @@ const App: React.FC = () => {
       </main>
     </div>
   );
-};
-
-export default App;
+}

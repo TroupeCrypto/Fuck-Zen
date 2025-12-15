@@ -1,3 +1,5 @@
+import './globals.css';
+
 export const metadata = {
   title: "Troupe War Room",
   description: "Tier 1 Executive Roundtable and Digital Headquarters"

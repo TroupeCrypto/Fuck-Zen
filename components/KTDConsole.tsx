@@ -8,7 +8,8 @@ const MOCK_MODULES: KnowledgeModule[] = [
     { id: 'm-103', version: '1.0.0', title: 'Dark_Pattern_Recognition', categoryId: 'cat-3', status: KnowledgeStatus.QUARANTINED, contentHash: 'aa22...', sensitivityTier: 5, createdAt: '2024-05-15' }
 ];
 
-const API_BASE = 'http://localhost:3001/api';
+// Use environment variable for API base URL, fallback to relative path for same-origin requests
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface KTDConsoleProps {
     executives: Executive[];
@@ -155,93 +156,130 @@ const KTDConsole: React.FC<KTDConsoleProps> = ({ executives: propExecs, onClose 
     });
 
     return (
-        <div className="fixed inset-0 bg-neutral-950 z-50 flex flex-col font-mono text-xs text-gray-300 animate-fadeIn">
+        <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 z-50 flex flex-col font-mono text-xs text-slate-300 animate-fadeIn">
             {/* Header */}
-            <div className="bg-neutral-900 border-b border-red-900/30 p-4 flex justify-between items-center">
-                <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-sm animate-pulse ${backendOnline ? 'bg-green-600' : 'bg-red-600'}`}></div>
-                    <h1 className="text-lg font-bold text-red-500 tracking-widest">KNOWLEDGE & TRAINING DEPT. (KTD)</h1>
-                    <span className="px-2 py-0.5 bg-red-900/20 border border-red-900 text-red-400 rounded text-[10px]">
-                        {backendOnline ? 'SECURE_UPLINK_ESTABLISHED' : 'OFFLINE_MODE'}
-                    </span>
+            <div className="bg-gradient-to-r from-red-950/30 via-slate-900 to-red-950/30 border-b border-red-500/20 px-6 py-4 flex justify-between items-center backdrop-blur-sm">
+                <div className="flex items-center gap-4">
+                    <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/30">
+                        <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-bold text-red-400 tracking-wider">KNOWLEDGE & TRAINING DEPT.</h1>
+                        <span className="text-[10px] text-slate-500">KTD SECURE CONSOLE</span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                        <div className={`w-2 h-2 rounded-full ${backendOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-red-500 animate-pulse'}`}></div>
+                        <span className={`px-3 py-1 rounded-md border text-[10px] font-semibold uppercase tracking-wider
+                            ${backendOnline 
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                                : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                            {backendOnline ? 'SECURE_UPLINK' : 'OFFLINE_MODE'}
+                        </span>
+                    </div>
                 </div>
-                <button onClick={onClose} className="text-gray-500 hover:text-white">[ESC] CLOSE CONSOLE</button>
+                <button 
+                    onClick={onClose} 
+                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors px-4 py-2 rounded-lg border border-slate-700/50 hover:border-slate-600 bg-slate-900/50 hover:bg-slate-800/50"
+                >
+                    <span className="text-[10px] text-slate-500">ESC</span>
+                    <span>CLOSE CONSOLE</span>
+                </button>
             </div>
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar */}
-                <div className="w-48 bg-neutral-900/50 border-r border-gray-800 p-4 flex flex-col justify-between">
+                <div className="w-56 bg-gradient-to-b from-slate-900/80 to-slate-950/80 border-r border-slate-800/50 p-5 flex flex-col justify-between">
                     <div className="space-y-2">
-                        <button 
-                            onClick={() => setActiveTab('roster')}
-                            className={`w-full text-left px-3 py-2 rounded border ${activeTab === 'roster' ? 'bg-red-900/20 border-red-900 text-red-400' : 'border-transparent hover:bg-gray-800'}`}
-                        >
-                            1. COLD START VERIFICATION
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('vault')}
-                            className={`w-full text-left px-3 py-2 rounded border ${activeTab === 'vault' ? 'bg-red-900/20 border-red-900 text-red-400' : 'border-transparent hover:bg-gray-800'}`}
-                        >
-                            2. KNOWLEDGE VAULT
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('ingestion')}
-                            className={`w-full text-left px-3 py-2 rounded border ${activeTab === 'ingestion' ? 'bg-red-900/20 border-red-900 text-red-400' : 'border-transparent hover:bg-gray-800'}`}
-                        >
-                            3. PRECISION INGESTION
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('audit')}
-                            className={`w-full text-left px-3 py-2 rounded border ${activeTab === 'audit' ? 'bg-red-900/20 border-red-900 text-red-400' : 'border-transparent hover:bg-gray-800'}`}
-                        >
-                            4. AUDIT LOGS
-                        </button>
+                        {[
+                            { id: 'roster', label: 'COLD START VERIFICATION', num: '1' },
+                            { id: 'vault', label: 'KNOWLEDGE VAULT', num: '2' },
+                            { id: 'ingestion', label: 'PRECISION INGESTION', num: '3' },
+                            { id: 'audit', label: 'AUDIT LOGS', num: '4' },
+                        ].map((tab) => (
+                            <button 
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`w-full text-left px-4 py-3 rounded-lg border transition-all duration-200 flex items-center gap-3
+                                    ${activeTab === tab.id 
+                                        ? 'bg-gradient-to-r from-red-950/40 to-red-900/20 border-red-500/30 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+                                        : 'border-transparent hover:bg-slate-800/50 hover:border-slate-700/50 text-slate-400'}`}
+                            >
+                                <span className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold
+                                    ${activeTab === tab.id ? 'bg-red-500/20 text-red-400' : 'bg-slate-800 text-slate-500'}`}>
+                                    {tab.num}
+                                </span>
+                                <span className="text-[11px] uppercase tracking-wider">{tab.label}</span>
+                            </button>
+                        ))}
                     </div>
 
                     {/* DANGER ZONE */}
-                    <div className="border-t border-red-900/50 pt-4 mt-4">
-                        <p className="text-[10px] text-red-600 font-bold mb-2 uppercase">Danger Zone</p>
+                    <div className="border-t border-red-900/30 pt-5 mt-5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Danger Zone</span>
+                        </div>
                         <button 
                             onClick={handleResetDatabase}
                             disabled={isResetting}
-                            className={`w-full text-red-500 border border-red-800 px-3 py-2 rounded font-bold transition-all
-                                ${isResetting ? 'bg-gray-900 opacity-50 cursor-not-allowed' : 'bg-red-950 hover:bg-red-900'}
+                            className={`w-full text-red-400 border border-red-700/50 px-4 py-3 rounded-lg font-bold transition-all text-[11px] uppercase tracking-wider
+                                ${isResetting 
+                                    ? 'bg-slate-900 opacity-50 cursor-not-allowed' 
+                                    : 'bg-gradient-to-r from-red-950/50 to-red-900/30 hover:from-red-900/50 hover:to-red-800/30 hover:border-red-600/50'}
                             `}
                         >
-                            {isResetting ? '[RESETTING...]' : '[HARD RESET DATABASE]'}
+                            {isResetting ? 'RESETTING...' : 'HARD RESET DB'}
                         </button>
                     </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 p-6 overflow-y-auto bg-black">
+                <div className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-black via-slate-950 to-black">
                     
                     {activeTab === 'roster' && (
                         <div className="space-y-6">
-                            <h2 className="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2">Executive Cognitive Status</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                                    <div className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-cyan-600 rounded-full"></div>
+                                    Executive Cognitive Status
+                                </h2>
+                                <span className="text-[10px] text-slate-500 font-mono bg-slate-900/50 px-3 py-1.5 rounded border border-slate-800/50">
+                                    {displayExecs.length} UNITS
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 {displayExecs.map(exec => (
-                                    <div key={exec.id} className="border border-gray-800 p-4 rounded bg-neutral-900/50 flex justify-between items-start">
+                                    <div key={exec.id} className="border border-slate-700/50 p-5 rounded-xl bg-gradient-to-br from-slate-900/60 to-slate-950/60 flex justify-between items-start hover:border-slate-600/50 transition-all">
                                         <div>
-                                            <div className="flex items-center space-x-2">
-                                                <span className="font-bold text-cyan-400">{exec.name}</span>
-                                                <span className="text-gray-600">ID: {exec.id}</span>
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 flex items-center justify-center text-cyan-400 font-bold border border-cyan-500/20">
+                                                    {exec.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold text-white block">{exec.name}</span>
+                                                    <span className="text-slate-500 text-[10px] font-mono">ID: {exec.id}</span>
+                                                </div>
                                             </div>
-                                            <div className="mt-2 text-gray-400">
-                                                <p>Role: {exec.role}</p>
-                                                <p>Status: {exec.status}</p>
+                                            <div className="text-slate-400 text-[11px] space-y-1 mb-4">
+                                                <p><span className="text-slate-500">Role:</span> {exec.role}</p>
+                                                <p><span className="text-slate-500">Status:</span> {exec.status}</p>
                                             </div>
-                                            <div className="mt-4">
-                                                <div className="text-[10px] uppercase text-gray-500 mb-1">Cold Start Protocol</div>
-                                                <div className={`px-2 py-1 inline-block border rounded text-[10px] 
-                                                    ${exec.coldStart ? 'border-green-900 text-green-500' : 'border-yellow-900 text-yellow-500'}`}>
+                                            <div>
+                                                <div className="text-[10px] uppercase text-slate-500 mb-1.5 tracking-wider">Cold Start Protocol</div>
+                                                <div className={`px-3 py-1.5 inline-flex items-center gap-2 border rounded-md text-[10px] font-semibold
+                                                    ${exec.coldStart ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-400'}`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${exec.coldStart ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}></div>
                                                     {exec.coldStart ? 'VERIFIED' : 'PENDING'}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-2xl font-bold text-gray-700">LVL {exec.knowledgeLevel || 0}</div>
-                                            <div className="text-[10px] text-gray-600">COG_LEVEL</div>
+                                            <div className="text-3xl font-black text-slate-700">LVL {exec.knowledgeLevel || 0}</div>
+                                            <div className="text-[10px] text-slate-600 uppercase tracking-wider">COG_LEVEL</div>
                                         </div>
                                     </div>
                                 ))}
@@ -251,40 +289,45 @@ const KTDConsole: React.FC<KTDConsoleProps> = ({ executives: propExecs, onClose 
 
                     {activeTab === 'vault' && (
                         <div>
-                             <h2 className="text-xl font-bold text-white mb-4 border-b border-gray-800 pb-2">Immutable Knowledge Vault</h2>
-                             <div className="overflow-x-auto">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                                    <div className="w-1 h-6 bg-gradient-to-b from-purple-400 to-purple-600 rounded-full"></div>
+                                    Immutable Knowledge Vault
+                                </h2>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-slate-700/50 bg-slate-900/30">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b border-gray-800 text-gray-500 uppercase text-[10px]">
-                                            <th className="p-3">ID</th>
-                                            <th className="p-3">Title</th>
-                                            <th className="p-3">Ver</th>
-                                            <th className="p-3">Status</th>
-                                            <th className="p-3">Tier</th>
-                                            <th className="p-3">Actions</th>
+                                        <tr className="border-b border-slate-700/50 bg-slate-900/50">
+                                            <th className="p-4 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">ID</th>
+                                            <th className="p-4 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">Title</th>
+                                            <th className="p-4 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">Ver</th>
+                                            <th className="p-4 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">Status</th>
+                                            <th className="p-4 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">Tier</th>
+                                            <th className="p-4 text-slate-400 uppercase text-[10px] tracking-wider font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {modules.map(mod => (
-                                            <tr key={mod.id} className="border-b border-gray-800 hover:bg-neutral-900">
-                                                <td className="p-3 font-mono text-cyan-600">{mod.id}</td>
-                                                <td className="p-3 font-bold text-gray-300">{mod.title}</td>
-                                                <td className="p-3 text-gray-500">{mod.version}</td>
-                                                <td className="p-3">
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] border 
-                                                        ${mod.status === 'PUBLISHED' ? 'border-green-900 text-green-500' : ''}
-                                                        ${mod.status === 'DRAFT' ? 'border-yellow-900 text-yellow-500' : ''}
-                                                        ${mod.status === 'QUARANTINED' ? 'border-red-900 text-red-500' : ''}
+                                            <tr key={mod.id} className="border-b border-slate-800/50 hover:bg-slate-900/50 transition-colors">
+                                                <td className="p-4 font-mono text-cyan-400">{mod.id}</td>
+                                                <td className="p-4 font-semibold text-slate-200">{mod.title}</td>
+                                                <td className="p-4 text-slate-500 font-mono">{mod.version}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-2.5 py-1 rounded-md text-[10px] border font-semibold
+                                                        ${mod.status === 'PUBLISHED' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : ''}
+                                                        ${mod.status === 'DRAFT' ? 'border-amber-500/30 bg-amber-500/10 text-amber-400' : ''}
+                                                        ${mod.status === 'QUARANTINED' ? 'border-red-500/30 bg-red-500/10 text-red-400' : ''}
                                                     `}>
                                                         {mod.status}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 text-gray-500">{mod.sensitivityTier}</td>
-                                                <td className="p-3">
+                                                <td className="p-4 text-slate-500">{mod.sensitivityTier}</td>
+                                                <td className="p-4">
                                                     {mod.status === 'PUBLISHED' && (
                                                         <button 
                                                             onClick={() => handleQuarantine(mod.id)}
-                                                            className="text-red-500 hover:text-red-400 hover:underline"
+                                                            className="text-red-400 hover:text-red-300 text-[11px] uppercase tracking-wider hover:underline transition-colors"
                                                         >
                                                             QUARANTINE
                                                         </button>
@@ -300,53 +343,66 @@ const KTDConsole: React.FC<KTDConsoleProps> = ({ executives: propExecs, onClose 
 
                     {activeTab === 'ingestion' && (
                         <div className="grid grid-cols-2 gap-6 h-full">
-                            <div className="border border-gray-800 rounded p-4 bg-neutral-900/30">
-                                <h3 className="text-sm font-bold text-gray-400 uppercase mb-4">1. Select Target</h3>
+                            <div className="border border-slate-700/50 rounded-xl p-5 bg-gradient-to-br from-slate-900/60 to-slate-950/60">
+                                <h3 className="text-sm font-bold text-slate-200 uppercase mb-4 flex items-center gap-2">
+                                    <span className="w-6 h-6 rounded-md bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-[10px]">1</span>
+                                    Select Target
+                                </h3>
                                 <div className="space-y-2">
                                     {propExecs.map(exec => (
                                         <button 
                                             key={exec.id}
                                             onClick={() => setSelectedExec(exec.id)}
-                                            className={`w-full text-left p-2 rounded border text-xs font-mono
-                                                ${selectedExec === exec.id ? 'bg-cyan-900/30 border-cyan-500 text-cyan-400' : 'border-gray-800 hover:border-gray-600'}
+                                            className={`w-full text-left p-3 rounded-lg border text-[11px] font-mono transition-all
+                                                ${selectedExec === exec.id 
+                                                    ? 'bg-gradient-to-r from-cyan-950/40 to-cyan-900/20 border-cyan-500/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.1)]' 
+                                                    : 'border-slate-700/50 hover:border-slate-600/50 hover:bg-slate-800/30 text-slate-400'}
                                             `}
                                         >
-                                            [{exec.id}] {exec.name}
+                                            <span className="text-slate-500">[{exec.id}]</span> {exec.name}
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            <div className="border border-gray-800 rounded p-4 bg-neutral-900/30 flex flex-col">
-                                <h3 className="text-sm font-bold text-gray-400 uppercase mb-4">2. Injection Control</h3>
+                            <div className="border border-slate-700/50 rounded-xl p-5 bg-gradient-to-br from-slate-900/60 to-slate-950/60 flex flex-col">
+                                <h3 className="text-sm font-bold text-slate-200 uppercase mb-4 flex items-center gap-2">
+                                    <span className="w-6 h-6 rounded-md bg-purple-500/20 flex items-center justify-center text-purple-400 text-[10px]">2</span>
+                                    Injection Control
+                                </h3>
                                 {selectedExec ? (
                                     <div className="flex-1 space-y-4">
-                                        <div className="p-3 bg-black border border-gray-700 rounded">
-                                            <p className="text-gray-500 mb-1">TARGET:</p>
+                                        <div className="p-4 bg-black/40 border border-slate-700/50 rounded-lg">
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">TARGET:</p>
                                             <p className="text-cyan-400 font-bold">{propExecs.find(e => e.id === selectedExec)?.name}</p>
                                         </div>
                                         <div>
-                                            <p className="text-gray-500 mb-2">AVAILABLE MODULES:</p>
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3">AVAILABLE MODULES:</p>
                                             <div className="space-y-2">
                                                 {modules.filter(m => m.status === 'PUBLISHED').map(mod => (
-                                                    <div key={mod.id} className="flex justify-between items-center p-2 border border-gray-800 rounded hover:bg-gray-800">
-                                                        <span>{mod.title}</span>
+                                                    <div key={mod.id} className="flex justify-between items-center p-3 border border-slate-700/50 rounded-lg hover:bg-slate-800/30 hover:border-slate-600/50 transition-all">
+                                                        <span className="text-slate-300">{mod.title}</span>
                                                         <button 
                                                             onClick={() => handleIngest(mod.id)}
-                                                            className="px-3 py-1 bg-cyan-900/20 border border-cyan-600 text-cyan-400 rounded hover:bg-cyan-600 hover:text-black transition-colors"
+                                                            className="px-4 py-1.5 bg-gradient-to-r from-cyan-900/30 to-cyan-800/20 border border-cyan-500/40 text-cyan-400 rounded-md hover:from-cyan-800/50 hover:to-cyan-700/30 hover:border-cyan-400/60 text-[10px] uppercase tracking-wider font-semibold transition-all"
                                                         >
                                                             INJECT
                                                         </button>
                                                     </div>
                                                 ))}
                                                 {modules.filter(m => m.status === 'PUBLISHED').length === 0 && (
-                                                    <p className="text-gray-600 italic">No published modules available.</p>
+                                                    <p className="text-slate-600 italic text-center py-4">No published modules available.</p>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 flex items-center justify-center text-gray-600">
-                                        Select a target to begin...
+                                    <div className="flex-1 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <svg className="w-10 h-10 text-slate-700 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+                                            </svg>
+                                            <p className="text-slate-600">Select a target to begin...</p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -354,19 +410,35 @@ const KTDConsole: React.FC<KTDConsoleProps> = ({ executives: propExecs, onClose 
                     )}
 
                     {activeTab === 'audit' && (
-                        <div className="font-mono text-xs space-y-1">
+                        <div>
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                                    <div className="w-1 h-6 bg-gradient-to-b from-amber-400 to-amber-600 rounded-full"></div>
+                                    Audit Trail
+                                </h2>
+                            </div>
+                            <div className="border border-slate-700/50 rounded-xl bg-black/40 p-4 font-mono text-xs space-y-2 max-h-[500px] overflow-y-auto">
+                            {logs.length === 0 && !backendOnline && (
+                                <div className="text-center py-8 text-slate-600">
+                                    <svg className="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    No audit logs yet...
+                                </div>
+                            )}
                             {logs.map((log, i) => (
-                                <div key={`local-${i}`} className="text-gray-400 border-b border-gray-900 pb-1">
+                                <div key={`local-${i}`} className="text-slate-400 border-b border-slate-800/50 pb-2 hover:bg-slate-900/30 px-2 py-1 rounded transition-colors">
                                     {log}
                                 </div>
                             ))}
                              {backendOnline && auditLogs.map((log: any) => (
-                                <div key={log.id} className="text-blue-400 border-b border-gray-900 pb-1 flex gap-2">
-                                    <span>[{new Date(log.timestamp).toLocaleTimeString()}]</span>
-                                    <span className="uppercase">{log.action}:</span>
-                                    <span className="text-gray-500">{log.target_type} {log.target_id}</span>
+                                <div key={log.id} className="text-cyan-400 border-b border-slate-800/50 pb-2 flex gap-2 hover:bg-slate-900/30 px-2 py-1 rounded transition-colors">
+                                    <span className="text-slate-500">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                                    <span className="uppercase text-amber-400">{log.action}:</span>
+                                    <span className="text-slate-400">{log.target_type} {log.target_id}</span>
                                 </div>
                             ))}
+                            </div>
                         </div>
                     )}
 

@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Tier 1 Executive Roundtable and Digital Headquarters",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,18 +10,20 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "^14.1.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-
     "dotenv": "^16.3.1",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3"
+    "next": "^14.1.0",
+    "pg": "^8.11.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
     "typescript": "^5.6.3"
   },
   "engines": {

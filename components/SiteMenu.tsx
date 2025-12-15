@@ -40,6 +40,45 @@ const MAIN_NAV: NavItem[] = [
   }
 ];
 
+// Color utility functions for Tailwind CSS (avoid dynamic class generation)
+const getNavItemHoverBorder = (color: string) => {
+  const borderColors: Record<string, string> = {
+    cyan: 'hover:border-cyan-500/30',
+    purple: 'hover:border-purple-500/30',
+    yellow: 'hover:border-yellow-500/30',
+  };
+  return borderColors[color] || 'hover:border-gray-500/30';
+};
+
+const getNavItemHoverText = (color: string) => {
+  const textColors: Record<string, string> = {
+    cyan: 'group-hover:text-cyan-400',
+    purple: 'group-hover:text-purple-400',
+    yellow: 'group-hover:text-yellow-400',
+  };
+  return textColors[color] || 'group-hover:text-gray-400';
+};
+
+const getDivisionDotColor = (color: string) => {
+  const dotColors: Record<string, string> = {
+    blue: 'bg-blue-500',
+    purple: 'bg-purple-500',
+    cyan: 'bg-cyan-500',
+    gray: 'bg-gray-500',
+  };
+  return dotColors[color] || 'bg-gray-500';
+};
+
+const getDivisionBadgeClasses = (color: string) => {
+  const badgeClasses: Record<string, string> = {
+    blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    purple: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+    cyan: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+    gray: 'text-gray-400 bg-gray-500/10 border-gray-500/20',
+  };
+  return badgeClasses[color] || 'text-gray-400 bg-gray-500/10 border-gray-500/20';
+};
+
 export default function SiteMenu({ onClose }: SiteMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -203,11 +242,11 @@ export default function SiteMenu({ onClose }: SiteMenuProps) {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-800/50 transition-all duration-200 group border border-transparent hover:border-${item.color}-500/30`}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-800/50 transition-all duration-200 group border border-transparent ${getNavItemHoverBorder(item.color)}`}
                 >
                   <span className="text-xl">{item.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <div className={`font-medium text-white group-hover:text-${item.color}-400 transition-colors`}>
+                    <div className={`font-medium text-white ${getNavItemHoverText(item.color)} transition-colors`}>
                       {item.name}
                     </div>
                     <div className="text-xs text-gray-500 truncate">{item.description}</div>
@@ -239,11 +278,11 @@ export default function SiteMenu({ onClose }: SiteMenuProps) {
                       onMouseLeave={() => setHoveredDivision(null)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all duration-200 ${isActive ? 'bg-gray-800/70' : 'hover:bg-gray-800/30'}`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full bg-${color}-500 ${isActive || hoveredDivision === division.id ? 'animate-pulse' : ''}`}></span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${getDivisionDotColor(color)} ${isActive || hoveredDivision === division.id ? 'animate-pulse' : ''}`}></span>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-200 text-sm">{division.name}</div>
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono text-${color}-400 bg-${color}-500/10 border border-${color}-500/20`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono border ${getDivisionBadgeClasses(color)}`}>
                         {depts.length}
                       </span>
                       <svg 

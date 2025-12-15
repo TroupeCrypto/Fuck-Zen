@@ -8,7 +8,8 @@ const MOCK_MODULES: KnowledgeModule[] = [
     { id: 'm-103', version: '1.0.0', title: 'Dark_Pattern_Recognition', categoryId: 'cat-3', status: KnowledgeStatus.QUARANTINED, contentHash: 'aa22...', sensitivityTier: 5, createdAt: '2024-05-15' }
 ];
 
-const API_BASE = 'http://localhost:3001/api';
+// Use environment variable for API base URL, fallback to relative path for same-origin requests
+const API_BASE = process.env.REACT_APP_API_URL || process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface KTDConsoleProps {
     executives: Executive[];

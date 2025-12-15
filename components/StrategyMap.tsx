@@ -86,33 +86,16 @@ const StrategyMap: React.FC = () => {
             className="absolute transition-all duration-700"
             style={{ top: `${node.y}%`, left: `${node.x}%` }}
           >
-            {/* Connection line to center */}
+            {/* Connection line visual effect (CSS-based) */}
             {node.active && (
-              <svg 
-                className="absolute overflow-visible pointer-events-none" 
+              <div 
+                className="absolute w-px bg-gradient-to-b from-cyan-400/40 to-transparent pointer-events-none"
                 style={{ 
-                  width: '100%', 
-                  height: '100%',
-                  left: 0,
-                  top: 0
+                  height: '200px',
+                  transform: 'rotate(45deg)',
+                  transformOrigin: 'top center'
                 }}
-              >
-                <line 
-                  x1="0" 
-                  y1="0" 
-                  x2={`${50 - node.x}vw`} 
-                  y2={`${50 - node.y}vh`} 
-                  stroke="url(#lineGradient)"
-                  strokeWidth="1"
-                  opacity="0.4"
-                />
-                <defs>
-                  <linearGradient id="lineGradient" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor="#06b6d4" />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-              </svg>
+              />
             )}
             
             {/* Node dot */}

@@ -11,7 +11,7 @@ import {
 } from '../constants';
 import { Executive, LogEntry, ConnectionStatus, Task } from '../types';
 import ExecutiveCard from '../components/ExecutiveCard';
-import Terminal from '../components/Terminal';
+import CommandLineInterface from '../components/CommandLineInterface';
 import FileViewer from '../components/FileViewer';
 import ExecutiveDetail from '../components/ExecutiveDetail';
 import StrategyMap from '../components/StrategyMap';
@@ -172,11 +172,7 @@ export default function HomePage() {
     }
   };
 
-  const handleSendCommand = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commandInput.trim()) return;
-
-    const cmd = commandInput.trim();
+  const handleSendCommand = (cmd: string) => {
     addLog(`> [USER]: ${cmd}`, 'info');
 
     if (pendingCommand) {
@@ -191,19 +187,16 @@ export default function HomePage() {
         addLog('SYSTEM: Command execution cancelled.', 'error');
         setPendingCommand(null);
       }
-      setCommandInput('');
       return;
     }
 
     if (cmd.toLowerCase().startsWith('assign:') || cmd.toLowerCase().includes('initiate')) {
       setPendingCommand(cmd);
       addLog('SYSTEM: Critical command received. Execute? (Y/N)', 'warning');
-      setCommandInput('');
       return;
     }
 
     executeCommand(cmd);
-    setCommandInput('');
   };
 
   const handleTaskComplete = (taskId: string) => {
@@ -298,41 +291,20 @@ export default function HomePage() {
                 ))}
               </div>
 
-              {/* Terminal & Command Input */}
-              <div className="mt-8 space-y-4">
-                <div className="flex justify-between items-end">
+              {/* Command Line Interface - New Component with Chat */}
+              <div className="mt-8">
+                <div className="flex justify-between items-end mb-4">
                     <h3 className="text-sm font-mono text-gray-500 uppercase">Command Line Interface</h3>
-                    <span className="text-[10px] text-gray-600 font-mono">V.2.0.4 - SECURE</span>
                 </div>
                 
-                <Terminal logs={logs} />
-                
-                {/* Command Input */}
-                <form onSubmit={handleSendCommand} className="flex gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cyan-500 font-mono text-lg">{'>'}</span>
-                    <input 
-                      type="text" 
-                      value={commandInput}
-                      onChange={(e) => setCommandInput(e.target.value)}
-                      placeholder={pendingCommand ? "Confirm execution? (Y/N)" : "e.g.: initiate expansion OR assign: 004 high ..."}
-                      className={`w-full bg-black border rounded px-4 py-3 pl-8 font-mono text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 placeholder-gray-700
-                        ${pendingCommand ? 'border-yellow-500/50 focus:border-yellow-500' : 'border-gray-800 focus:border-cyan-500'}
-                      `}
-                      autoFocus
-                    />
-                  </div>
-                  <button 
-                    type="submit"
-                    className={`px-6 py-2 border font-mono text-xs uppercase tracking-widest transition-all rounded
-                      ${pendingCommand 
-                        ? 'bg-yellow-900/20 border-yellow-500/50 text-yellow-500 hover:bg-yellow-900/40' 
-                        : 'bg-gray-900 border-gray-700 hover:border-cyan-500 hover:text-cyan-400 text-gray-400'}
-                    `}
-                  >
-                    {pendingCommand ? 'CONFIRM' : 'EXECUTE'}
-                  </button>
-                </form>
+                <CommandLineInterface
+                  executives={executives}
+                  logs={logs}
+                  onSendCommand={handleSendCommand}
+                  commandInput={commandInput}
+                  setCommandInput={setCommandInput}
+                  pendingCommand={pendingCommand}
+                />
               </div>
             </div>
 

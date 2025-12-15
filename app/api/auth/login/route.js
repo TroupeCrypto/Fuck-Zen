@@ -2,8 +2,8 @@ export const runtime = "nodejs";
 
 import { readJson } from "../../_utils/body.js";
 import { json, badRequest, unauthorized } from "../../_utils/respond.js";
-import { signAccessToken } from "../../../lib/auth/jwt.js";
-import { verifyUserPassword } from "../../../lib/auth/users.js";
+import { signAccessToken } from "../../../../lib/auth/jwt.js";
+import { verifyUserPassword } from "../../../../lib/auth/users.js";
 
 export async function POST(req) {
   const body = await readJson(req);

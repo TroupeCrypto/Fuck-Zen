@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { json, unauthorized } from "../../_utils/respond.js";
-import { requireAuth } from "../../../lib/auth/requireAuth.js";
+import { requireAuth } from "../../../../lib/auth/requireAuth.js";
 
 export async function GET(req) {
   const auth = await requireAuth(req);

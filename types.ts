@@ -99,3 +99,30 @@ export interface ValidationRun {
   scenariosRun: number;
   failureReason?: string;
 }
+
+// --- CHAT & MESSAGING SYSTEM ---
+
+export type ChatTargetType = 'individual' | 'department' | 'group' | 'broadcast';
+
+export interface ChatTarget {
+  type: ChatTargetType;
+  executiveIds?: string[];
+  departmentIds?: string[];
+  groupName?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  timestamp: string;
+  from: string; // executive ID or 'USER'
+  target: ChatTarget;
+  message: string;
+  status: 'sent' | 'delivered' | 'read';
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+}

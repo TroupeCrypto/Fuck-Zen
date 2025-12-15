@@ -48,15 +48,17 @@ const StrategyMap: React.FC = () => {
         </div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-cyan-500 rounded-full shadow-[0_0_20px_rgba(6,182,212,1)]"></div>
 
-        {nodes.map(node => (
-          <div
-            key={node.id}
-            style={{ top: `${node.y}%`, left: `${node.x}%` }}
-            className={`absolute w-1.5 h-1.5 rounded-full ${node.active ? 'bg-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.8)]' : 'bg-cyan-900/70'}`}
-          >
-            {node.active && <span className="absolute inset-0 rounded-full bg-cyan-400/50 animate-ping"></span>}
-          </div>
-        ))}
+        {nodes.map((node) => {
+          const base = "absolute w-1.5 h-1.5 rounded-full";
+          const state = node.active
+            ? "bg-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.8)]"
+            : "bg-cyan-900/70";
+          return (
+            <div key={node.id} style={{ top: `${node.y}%`, left: `${node.x}%` }} className={`${base} ${state}`}>
+              {node.active && <span className="absolute inset-0 rounded-full bg-cyan-400/50 animate-ping"></span>}
+            </div>
+          );
+        })}
 
         <div className="absolute inset-4 border border-cyan-900/40 rounded-xl pointer-events-none"></div>
       </div>

@@ -1,0 +1,21 @@
+{
+  "name": "troupe-war-room",
+  "version": "1.0.0",
+  "description": "Tier 1 Executive Roundtable and Digital Headquarters",
+  "main": "service/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node service/index.js",
+    "dev": "node service/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

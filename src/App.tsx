@@ -21,6 +21,7 @@ const App: React.FC = () => {
   
   // Initialize tasks from localStorage or empty array
   const [tasks, setTasks] = useState<Task[]>(() => {
+    if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem('troupe_tasks');
       return saved ? JSON.parse(saved) : [];

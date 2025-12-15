@@ -9,7 +9,7 @@ const MOCK_MODULES: KnowledgeModule[] = [
 ];
 
 // Use environment variable for API base URL, fallback to relative path for same-origin requests
-const API_BASE = process.env.REACT_APP_API_URL || process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 interface KTDConsoleProps {
     executives: Executive[];

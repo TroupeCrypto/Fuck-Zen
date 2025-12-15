@@ -19,16 +19,18 @@ const App: React.FC = () => {
   const [executives, setExecutives] = useState<Executive[]>(INITIAL_ROSTER);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   
-  // Initialize tasks from localStorage or empty array
-  const [tasks, setTasks] = useState<Task[]>(() => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  // Load tasks on client
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
       const saved = localStorage.getItem('troupe_tasks');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) setTasks(JSON.parse(saved));
     } catch (e) {
       console.error("Failed to load tasks", e);
-      return [];
     }
-  });
+  }, []);
 
   const [systemActive, setSystemActive] = useState(false);
   const [expansionActive, setExpansionActive] = useState(false);

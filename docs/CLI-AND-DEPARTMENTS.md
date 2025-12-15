@@ -101,161 +101,202 @@ The CLI uses a fixed-height container (`min-h-[18rem] max-h-[18rem]`) to:
 
 ---
 
+## Organizational Hierarchy
+
+### Structure Overview
+The organization follows a three-tier hierarchy:
+```
+Division → Department → Function
+```
+
+This structure supports:
+- Multiple business units
+- Multiple revenue models
+- Multiple regulatory regimes
+- Digital + physical operations
+
+### Classification System
+
+#### Operational Mode
+- **Strategy**: Strategy-heavy units focused on planning, decision-making, and direction
+- **Execution**: Execution-heavy units focused on implementation and delivery
+- **Hybrid**: Units that balance both strategic and execution responsibilities
+
+#### Regulatory Status
+- **Standard**: No special regulatory requirements
+- **Regulated**: Subject to industry regulations requiring compliance monitoring
+- **Highly Regulated**: Subject to strict regulatory oversight requiring firewalling, isolation, and audit logging
+
+### Firewalled Divisions
+The following divisions require structural isolation to ensure compliance:
+- **Finance & Treasury** - Financial regulations compliance
+- **Cannabis Operations** - Strict state/federal cannabis regulations
+- **Medical & Clinical** - HIPAA and healthcare regulations
+- **Food & Beverage** - FDA and food safety regulations
+- **Government & Public Sector** - Government contract compliance
+
+Firewalled divisions are:
+- Structurally isolated from other divisions
+- Permission-restricted for authorized personnel only
+- Logged and auditable for compliance tracking
+- Separated from creative and growth teams
+
+---
+
+## Division Directory
+
+### Total Divisions: 16
+
+#### Executive & Governance (Strategy-Heavy)
+Centralized decision authority for:
+- Executive leadership
+- Strategic planning
+- Investor relations
+- Government affairs
+
+#### Intelligence & Decision Systems (Strategy-Heavy) ⭐ NEW
+Cross-department synthesis function for AI-driven execution:
+- Intelligence Operations
+- Decision Support
+- Forecasting & Simulation
+- ML/AI Engineering
+- Data Engineering
+- Data Governance
+
+#### Technology & Engineering (Execution-Heavy)
+Software development and infrastructure:
+- Engineering (Backend, Frontend, Mobile, QA, DevOps)
+- Security
+- IT
+- R&D
+- VR/AR
+- Hardware
+
+#### Product & Design (Hybrid)
+Product strategy and user experience:
+- Product Management
+- Design (UX, UI)
+
+#### Revenue & Growth (Execution-Heavy)
+Revenue generation and customer engagement:
+- Marketing (Brand, Growth, Content, SEO, Social, Ad Ops, etc.)
+- Sales (Enterprise, SMB)
+- Partnerships
+- Customer Success (Support, Trust & Safety, Moderation)
+- E-commerce
+
+#### Content & IP (Hybrid)
+Media conglomerate operations:
+- Publishing & Editorial
+- Content Acquisition
+- Audio/Video Production
+- Streaming
+- Gaming & Esports
+- Creator & Artist Relations
+- Fashion & Apparel
+
+#### Physical Operations (Execution-Heavy)
+Consolidated physical world operations:
+- Operations Management
+- Workplace & Facilities
+- Supply Chain
+- Manufacturing
+- Retail & Merchandising
+- Hospitality
+- Live Events (Ticketing, Venue Ops)
+
+#### Web3 & Digital Assets (Hybrid)
+Blockchain and digital asset operations:
+- Web3 Strategy
+- Blockchain Engineering
+- Tokenomics
+- Smart Contracts
+- NFT Operations
+
+#### Legal & Risk (Strategy-Heavy)
+Legal and compliance oversight:
+- Legal Counsel
+- Compliance
+- Risk Management
+- Privacy
+- Regulatory Affairs
+
+#### People & Culture (Hybrid)
+Human resources operations:
+- HR
+- Recruiting
+- Training & Development
+
+#### Corporate Communications (Hybrid)
+Communications strategy:
+- Communications
+- Public Relations
+- Community Management
+
+### Firewalled Regulated Divisions
+
+#### Finance & Treasury (Regulated)
+- Finance
+- Accounting
+- Treasury
+- Procurement
+
+#### Cannabis Operations (Highly Regulated)
+- Cannabis Operations
+- Cannabis Compliance
+- Cannabis Licensing
+- Labs & Testing
+- Quality & Regulatory
+
+#### Medical & Clinical (Highly Regulated)
+- Medical & Clinical Operations
+- Health & Wellness
+
+#### Food & Beverage (Regulated)
+- Food & Beverage Operations
+
+#### Government & Public Sector (Regulated)
+- Government Services
+- Education & EdTech
+
+---
+
 ## Department Directory Structure
 
 ### Location
 `/departments/`
 
-### Overview
-Comprehensive department structure covering all functional areas of modern startup, digital, tech, crypto, cannabis, art, music, publishing, and social media companies.
+### Department Hierarchy
 
-### Total Departments: 97+
+Each department now includes:
+- `divisionId` - Parent division identifier
+- `operationalMode` - Strategy, execution, or hybrid classification
+- `regulatoryStatus` - Standard, regulated, or highly-regulated (optional)
+- `isFunction` - Whether this is a sub-function that rolls up to a parent
+- `parentDepartmentId` - Parent department for functions
 
-### Department Categories
+### Function Roll-ups
 
-#### Executive & Leadership (4)
-- `executive/` - C-Suite and executive leadership
-- `operations/` - Business operations and efficiency
-- `strategy/` - Strategic planning and development
-- `bizops/` - Cross-functional business operations
+The following are now functions under parent departments (not top-level):
 
-#### Finance & Accounting (5)
-- `finance/` - Financial planning and analysis
-- `accounting/` - Financial reporting and accounting
-- `treasury/` - Cash management and treasury
-- `investor-relations/` - Investor communications
-- `procurement/` - Vendor management and procurement
-
-#### People & Culture (4)
-- `hr/` - Human resources operations
-- `recruiting/` - Talent acquisition
-- `training/` - Learning and development
-- `workplace/` - Facilities and workplace services
-
-#### Legal & Compliance (5)
-- `legal/` - Legal counsel and contracts
-- `compliance/` - Regulatory compliance
-- `risk/` - Risk management
-- `privacy/` - Data privacy and protection
-- `data-governance/` - Data governance and policy
-
-#### Security & IT (3)
-- `security/` - Information security
-- `it/` - IT infrastructure and support
-- `devops/` - Development operations
-
-#### Engineering (8)
-- `engineering/` - Software engineering
-- `backend/` - Backend development
-- `frontend/` - Frontend development
-- `mobile/` - Mobile app development
-- `data-engineering/` - Data pipelines and infrastructure
-- `ml-ai/` - Machine learning and AI
-- `qa/` - Quality assurance
-- `r-and-d/` - Research and development
-
-#### Product & Design (4)
-- `product/` - Product management
-- `design/` - Design strategy
-- `ux/` - User experience design
-- `ui/` - User interface design
-
-#### Marketing (10)
-- `marketing/` - Marketing strategy
-- `brand/` - Brand marketing
-- `growth/` - Growth and performance marketing
-- `content/` - Content marketing
-- `seo/` - Search engine optimization
-- `social/` - Social media management
-- `influencer/` - Influencer marketing
-- `ad-ops/` - Ad operations
-- `programmatic/` - Programmatic advertising
-- `media-buying/` - Media planning and buying
-
-#### Sales & Business Development (4)
-- `sales/` - Sales operations
-- `enterprise-sales/` - Enterprise accounts
-- `smb-sales/` - Small/medium business sales
-- `partnerships/` - Partnerships and BD
-
-#### Customer Success (4)
-- `customer-success/` - Customer success management
-- `support/` - Customer support
-- `trust-safety/` - Trust and safety
-- `moderation/` - Content moderation
-
-#### Communications (4)
-- `communications/` - Corporate communications
-- `pr/` - Public relations
-- `community/` - Community management
-- `events/` - Events and conferences
-
-#### Web3 & Crypto (5)
-- `web3/` - Web3 strategy and development
-- `blockchain-eng/` - Blockchain engineering
-- `tokenomics/` - Token economics
-- `smart-contracts/` - Smart contract development
-- `nft/` - NFT operations
-
-#### Cannabis (8)
-- `cannabis-ops/` - Cannabis operations
-- `cannabis-compliance/` - Cannabis compliance
-- `cannabis-licensing/` - Licensing and permits
-- `supply-chain/` - Supply chain and logistics
-- `manufacturing/` - Manufacturing operations
-- `labs/` - Laboratory testing
-- `quality-reg/` - Quality and regulatory
-- `medical/` - Medical and clinical
-
-#### Retail & E-commerce (4)
-- `retail/` - Retail operations
-- `ecommerce/` - E-commerce operations
-- `merchandising/` - Product merchandising
-- `food-beverage/` - Food and beverage
-
-#### Media & Entertainment (7)
-- `editorial/` - Editorial content
-- `publishing/` - Publishing operations
-- `content-acquisition/` - Content licensing
-- `audio-video/` - Audio/video production
-- `streaming/` - Streaming and broadcast
-- `gaming/` - Gaming operations
-- `esports/` - Esports operations
-
-#### Music & Arts (6)
-- `artist-relations/` - Artist management
-- `label-relations/` - Music label partnerships
-- `creator-relations/` - Creator partnerships
-- `live-events/` - Live events and touring
-- `ticketing/` - Ticketing operations
-- `venue-ops/` - Venue management
-
-#### Fashion & Apparel (1)
-- `fashion/` - Fashion and apparel design
-
-#### Emerging Technology (2)
-- `vr-ar/` - VR/AR development
-- `hardware/` - Hardware development
-
-#### Hospitality & Services (1)
-- `hospitality/` - Hospitality services
-
-#### Localization (1)
-- `localization/` - Internationalization and localization
-
-#### Vertical-Specific (5)
-- `government/` - Government and public sector
-- `education/` - Education and EdTech
-- `health-wellness/` - Health and wellness
-- `sports-fitness/` - Sports and fitness
-- `reg-affairs/` - Regulatory affairs
-
-### Department Structure
-
-Each department directory contains:
-- `README.md` - Department description and responsibilities
-  - **Scope**: High-level description of the department's purpose
-  - **Responsibilities**: Key responsibilities and functions
+| Function | Parent Department |
+|----------|------------------|
+| QA | Engineering |
+| Backend Engineering | Engineering |
+| Frontend Engineering | Engineering |
+| Mobile Engineering | Engineering |
+| DevOps | Engineering |
+| UX Design | Design |
+| UI Design | Design |
+| Ad Operations | Marketing |
+| Content Marketing | Marketing |
+| SEO | Marketing |
+| Social Media | Marketing |
+| Trust & Safety | Customer Success |
+| Moderation | Trust & Safety |
+| Editorial | Publishing |
+| Localization | Publishing |
+| Esports | Gaming |
 
 ### Usage in Chat System
 
@@ -263,6 +304,7 @@ The department structure integrates with the CLI chat system:
 1. Departments are available in the target selector
 2. Selecting a department targets all members of that department
 3. Department data is sourced from `/constants.ts` (`DEPARTMENTS` array)
+4. Division data is available from `/constants.ts` (`DIVISIONS` array)
 
 ### Extending the Structure
 
@@ -270,7 +312,15 @@ To add a new department:
 1. Create a new directory under `/departments/`
 2. Add a `README.md` with scope and responsibilities
 3. Add the department to the `DEPARTMENTS` array in `/constants.ts`
-4. Department will automatically appear in the chat target selector
+4. Specify the `divisionId` to assign to a division
+5. Set `operationalMode` and `regulatoryStatus` as appropriate
+6. If it's a sub-function, set `isFunction: true` and `parentDepartmentId`
+7. Department will automatically appear in the chat target selector
+
+To add a new division:
+1. Add the division to the `DIVISIONS` array in `/constants.ts`
+2. Specify `operationalMode`, `regulatoryStatus`, `requiresFirewall`, and `requiresAuditLog`
+3. Update existing departments to reference the new division
 
 ---
 
@@ -373,7 +423,10 @@ All components are fully typed with TypeScript:
 - `LogEntry` - System log entries
 - `ChatMessage` - Chat message structure
 - `ChatTarget` - Message targeting information
-- `Department` - Department information
+- `Department` - Department information (extended with hierarchy)
+- `Division` - Division information (new)
+- `OperationalMode` - Strategy/execution/hybrid classification
+- `RegulatoryStatus` - Standard/regulated/highly-regulated classification
 
 ---
 
@@ -393,23 +446,32 @@ All components are fully typed with TypeScript:
 
 3. **Department Management**
    - Dynamic department assignment
-   - Department hierarchy
-   - Role-based permissions
+   - Division-based filtering
+   - Role-based permissions with firewall enforcement
    - Department dashboards
+   - Regulatory compliance tracking
 
 4. **Enhanced UI**
    - Typing indicators
    - Read receipts
    - Online/offline status
    - Avatar images
+   - Division-based color coding
 
 5. **Analytics**
    - Message metrics
    - Response times
    - Department activity
    - Engagement tracking
+   - Compliance audit reports
+
+6. **Intelligence Integration**
+   - Decision support dashboards
+   - Forecasting visualizations
+   - Cross-department synthesis reports
+   - AI assignment recommendations
 
 ---
 
 **Last Updated**: 2025-12-15
-**Version**: 1.0.0
+**Version**: 2.0.0

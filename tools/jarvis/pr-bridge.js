@@ -103,14 +103,18 @@ function generateJWT(appId, privateKey) {
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
   const signatureInput = `${encodedHeader}.${encodedPayload}`;
   
-  const signature = crypto.sign('RSA-SHA256', Buffer.from(signatureInput), privateKey);
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(signatureInput);
+  sign.end();
+  const signature = sign.sign(privateKey);
   const encodedSignature = base64UrlEncode(signature);
   
   return `${signatureInput}.${encodedSignature}`;
 }
 
 function base64UrlEncode(data) {
-  const base64 = Buffer.from(data).toString('base64');
+  const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  const base64 = buffer.toString('base64');
   return base64
     .replace(/\+/g, '-')
     .replace(/\//g, '_')

@@ -106,8 +106,9 @@ The PR Bridge includes several safety features:
 
 1. **Blocked Paths**: The following paths are blocked by default:
    - `.env*` files (environment variables)
-   - Files containing `secrets` in the path
+   - Paths containing `secrets/` or `/secrets/` directories
    - `.github/workflows/**` (workflow files)
+   - Note: Files with "secrets" in their name (like `secrets-guide.md`) are allowed; only paths with `secrets/` as a directory are blocked
 
 2. **Mode Restrictions**: Only `mode: "write"` is currently allowed
 

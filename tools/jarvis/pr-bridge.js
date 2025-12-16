@@ -25,7 +25,8 @@ const path = require('path');
 
 const BLOCKED_PATHS = [
   /^\.env/i,
-  /secrets/i,
+  /\/secrets\//i,
+  /^secrets\//i,
   /^\.github\/workflows\//
 ];
 

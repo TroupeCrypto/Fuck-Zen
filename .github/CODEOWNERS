@@ -1,0 +1,16 @@
+# Default: you own everything
+* @TroupeCrypto
+
+# Jarvis governance (never auto-approved)
+docs/jarvis/** @TroupeCrypto
+
+# CI / automation
+.github/** @TroupeCrypto
+
+# Project configuration
+package.json @TroupeCrypto
+package-lock.json @TroupeCrypto
+pnpm-lock.yaml @TroupeCrypto
+
+# Environment & infra (if present)
+.env* @TroupeCrypto

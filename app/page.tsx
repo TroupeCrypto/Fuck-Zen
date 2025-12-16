@@ -16,6 +16,7 @@ import FileViewer from '../components/FileViewer';
 import ExecutiveDetail from '../components/ExecutiveDetail';
 import StrategyMap from '../components/StrategyMap';
 import KTDConsole from '../components/KTDConsole';
+import SiteMenu from '../components/SiteMenu';
 
 export default function HomePage() {
   const [executives, setExecutives] = useState<Executive[]>(INITIAL_ROSTER);
@@ -218,11 +219,14 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#050505] text-gray-200 p-4 lg:p-8 font-sans selection:bg-cyan-900 selection:text-cyan-100 relative">
       
+      {/* Site Menu */}
+      <SiteMenu />
+      
       {/* KTD OVERLAY */}
       {showKTD && <KTDConsole executives={executives} onClose={() => setShowKTD(false)} />}
 
       {/* Header */}
-      <header className="mb-8 border-b border-gray-800 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <header className="mb-8 border-b border-gray-800 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4 pl-14">
         <div>
           <h1 className="text-4xl font-black tracking-tighter text-white mb-1">
             TROUPE <span className="text-cyan-500">INC.</span>

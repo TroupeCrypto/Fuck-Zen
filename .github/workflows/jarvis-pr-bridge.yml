@@ -1,0 +1,62 @@
+name: Jarvis PR Bridge
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan_path:
+        description: 'Path to the JSON plan file'
+        required: false
+        default: 'tools/jarvis/change.json'
+        type: string
+
+jobs:
+  create-pr:
+    name: Create PR via Jarvis Bridge
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Validate required secrets
+        env:
+          APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
+          PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+        run: |
+          echo "🔍 Validating required secrets..."
+          
+          if [ -z "$APP_ID" ]; then
+            echo "❌ ERROR: GITHUB_APP_ID secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$INSTALLATION_ID" ]; then
+            echo "❌ ERROR: GITHUB_INSTALLATION_ID secret is not set"
+            exit 1
+          fi
+          
+          if [ -z "$PRIVATE_KEY" ]; then
+            echo "❌ ERROR: GITHUB_APP_PRIVATE_KEY secret is not set"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are present"
+      
+      - name: Run Jarvis PR Bridge
+        env:
+          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          GITHUB_INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+        run: |
+          echo "🚀 Running Jarvis PR Bridge..."
+          echo "📋 Plan file: ${{ inputs.plan_path }}"
+          node tools/jarvis/pr-bridge.js "${{ inputs.plan_path }}"

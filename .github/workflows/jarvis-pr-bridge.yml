@@ -53,6 +53,9 @@ jobs:
       
       - name: Run Jarvis PR Bridge
         env:
+          JARVIS_APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          JARVIS_INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
+          JARVIS_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
           GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
           GITHUB_INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
           GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}

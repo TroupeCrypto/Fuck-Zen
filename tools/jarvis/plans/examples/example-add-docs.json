@@ -1,0 +1,16 @@
+{
+  "owner": "TroupeCrypto",
+  "repo": "Fuck-Zen",
+  "base": "main",
+  "branch": "jarvis/add-api-documentation",
+  "title": "Jarvis: Add API documentation",
+  "body": "Objective: Provide comprehensive API documentation for developers\nScope: docs/api/overview.md\nRisk: Low (documentation only)\nRollback: revert PR.",
+  "commits": [
+    {
+      "path": "docs/api/overview.md",
+      "mode": "write",
+      "content": "# API Overview\n\nThis document provides an overview of the Troupe Inc. API.\n\n## Authentication\n\nAll API requests require authentication using JWT tokens.\n\n## Base URL\n\n```\nhttps://api.troupe.com/v1\n```\n\n## Endpoints\n\n### GET /status\n\nReturns the current system status.\n\n### POST /execute\n\nExecutes a command with the provided parameters.\n",
+      "message": "Add API documentation overview"
+    }
+  ]
+}

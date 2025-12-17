@@ -574,7 +574,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                           onClick={togglePlayPause}
                           className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
                         >
-                          {isPlaying ? '⏸' : '▶'}
+                          {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                         </button>
                       </div>
                     </div>

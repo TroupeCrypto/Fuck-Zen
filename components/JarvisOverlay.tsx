@@ -52,6 +52,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const blobUrlsRef = useRef<Set<string>>(new Set());
 
   // Initialize IndexedDB for music storage
   useEffect(() => {
@@ -73,6 +74,17 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
       setCommandMode(false);
     }
   }, [input]);
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      // Revoke all blob URLs when component unmounts
+      blobUrlsRef.current.forEach(url => {
+        URL.revokeObjectURL(url);
+      });
+      blobUrlsRef.current.clear();
+    };
+  }, []);
 
   const initIndexedDB = () => {
     if (typeof window === 'undefined') return;
@@ -211,6 +223,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
       const file = files[i];
       if (!file.type.startsWith('audio/')) continue;
 
+      // Create blob URL and track it for cleanup
+      const blobUrl = URL.createObjectURL(file);
+      blobUrlsRef.current.add(blobUrl);
+
       // Parse metadata (simplified - in production would use music-metadata library)
       const track: Track = {
         id: Date.now().toString() + i,
@@ -218,7 +234,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
         artist: 'Unknown Artist',
         album: 'Unknown Album',
         file: file,
-        url: URL.createObjectURL(file)
+        url: blobUrl
       };
 
       await saveTrackToDB(track);

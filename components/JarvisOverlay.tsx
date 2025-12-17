@@ -18,6 +18,14 @@ interface Notification {
   read: boolean;
 }
 
+interface StoredNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
 interface Track {
   id: string;
   title: string;
@@ -156,22 +164,16 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     const stored = localStorage.getItem('jarvis-notifications');
     if (stored) {
       try {
-        const parsed = JSON.parse(stored);
+        const parsed: StoredNotification[] = JSON.parse(stored);
         // Convert ISO strings back to Date objects with validation
-        const notificationsWithDates: Notification[] = parsed.map((n: {
-          id: string;
-          title: string;
-          message: string;
-          timestamp: string;
-          read: boolean;
-        }) => ({
+        const notificationsWithDates: Notification[] = parsed.map((n) => ({
           ...n,
           timestamp: new Date(n.timestamp)
         }));
         
         // Validate that timestamps are valid dates
         const validNotifications = notificationsWithDates.filter(n => 
-          !isNaN(n.timestamp.getTime())
+          !Number.isNaN(n.timestamp.getTime())
         );
         
         setNotifications(validNotifications);
@@ -197,7 +199,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const saveNotifications = (notifs: Notification[]) => {
     try {
       // Convert Date objects to ISO strings for storage
-      const notificationsForStorage = notifs.map(n => ({
+      const notificationsForStorage: StoredNotification[] = notifs.map(n => ({
         ...n,
         timestamp: n.timestamp.toISOString()
       }));

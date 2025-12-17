@@ -265,13 +265,13 @@ function normalizePath(filePath) {
 
 async function main() {
   // Read environment variables
-  const appId = process.env.GITHUB_APP_ID;
-  const installationId = process.env.GITHUB_INSTALLATION_ID;
-  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+  const appId = process.env.JARVIS_APP_ID;
+  const installationId = process.env.JARVIS_INSTALLATION_ID;
+  const privateKey = process.env.JARVIS_APP_PRIVATE_KEY;
   
   if (!appId || !installationId || !privateKey) {
     console.error('ERROR: Missing required environment variables');
-    console.error('Required: GITHUB_APP_ID, GITHUB_INSTALLATION_ID, GITHUB_APP_PRIVATE_KEY');
+    console.error('Required: JARVIS_APP_ID, JARVIS_INSTALLATION_ID, JARVIS_APP_PRIVATE_KEY');
     process.exit(1);
   }
   

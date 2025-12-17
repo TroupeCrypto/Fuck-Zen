@@ -395,6 +395,9 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
         >
           <div 
             className="bg-gray-900 w-full md:w-[600px] md:max-h-[700px] h-[80vh] md:h-auto rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col border border-gray-700"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jarvis-header"
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
@@ -406,7 +409,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                   J
                 </div>
                 <div>
-                  <h2 className="text-white font-semibold">Jarvis</h2>
+                  <h2 id="jarvis-header" className="text-white font-semibold">Jarvis</h2>
                   <p className="text-gray-400 text-xs">AI Assistant</p>
                 </div>
               </div>

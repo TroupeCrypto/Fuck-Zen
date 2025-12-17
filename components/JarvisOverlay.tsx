@@ -151,6 +151,16 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     });
   };
 
+  const getDefaultNotifications = (): Notification[] => [
+    {
+      id: '1',
+      title: 'System Update',
+      message: 'Jarvis overlay initialized successfully',
+      timestamp: new Date(),
+      read: false
+    }
+  ];
+
   const loadNotifications = () => {
     // Load from localStorage or generate sample notifications
     const stored = localStorage.getItem('jarvis-notifications');
@@ -171,7 +181,9 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           typeof notif.id === 'string' &&
           typeof notif.title === 'string' &&
           typeof notif.message === 'string' &&
-          typeof notif.read === 'boolean'
+          typeof notif.read === 'boolean' &&
+          notif.timestamp !== undefined &&
+          notif.timestamp !== null
         );
         
         if (!isValid) {
@@ -179,39 +191,28 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           throw new Error('Invalid notification structure');
         }
         
-        // Convert timestamp strings back to Date objects
-        const notifications = parsed.map(notif => ({
-          ...notif,
-          timestamp: new Date(notif.timestamp)
-        }));
+        // Convert timestamp strings back to Date objects and validate
+        const notifications = parsed.map(notif => {
+          const timestamp = new Date(notif.timestamp);
+          // Check if timestamp is valid
+          if (isNaN(timestamp.getTime())) {
+            throw new Error('Invalid timestamp in notification');
+          }
+          return {
+            ...notif,
+            timestamp
+          };
+        });
         
         setNotifications(notifications);
       } catch (error) {
         console.error('Failed to load notifications from localStorage:', error);
         // Clear corrupted data and use sample notifications
         localStorage.removeItem('jarvis-notifications');
-        const sampleNotifications: Notification[] = [
-          {
-            id: '1',
-            title: 'System Update',
-            message: 'Jarvis overlay initialized successfully',
-            timestamp: new Date(),
-            read: false
-          }
-        ];
-        setNotifications(sampleNotifications);
+        setNotifications(getDefaultNotifications());
       }
     } else {
-      const sampleNotifications: Notification[] = [
-        {
-          id: '1',
-          title: 'System Update',
-          message: 'Jarvis overlay initialized successfully',
-          timestamp: new Date(),
-          read: false
-        }
-      ];
-      setNotifications(sampleNotifications);
+      setNotifications(getDefaultNotifications());
     }
   };
 

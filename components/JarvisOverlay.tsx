@@ -3,6 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, MessageSquare, Target, Bell, Music, Send, Command } from 'lucide-react';
 
+// Database and storage constants
+const DB_NAME = 'JarvisDB';
+const STORE_TRACKS = 'tracks';
+const STORE_PLAYLISTS = 'playlists';
+const STORAGE_KEY_NOTIFICATIONS = 'jarvis-notifications';
+
 interface JarvisMessage {
   id: string;
   text: string;
@@ -77,17 +83,17 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const initIndexedDB = () => {
     if (typeof window === 'undefined') return;
     
-    const request = indexedDB.open('JarvisDB', 1);
+    const request = indexedDB.open(DB_NAME, 1);
     
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = (event.target as IDBOpenDBRequest).result;
       
-      if (!db.objectStoreNames.contains('tracks')) {
-        db.createObjectStore('tracks', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_TRACKS)) {
+        db.createObjectStore(STORE_TRACKS, { keyPath: 'id' });
       }
       
-      if (!db.objectStoreNames.contains('playlists')) {
-        db.createObjectStore('playlists', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_PLAYLISTS)) {
+        db.createObjectStore(STORE_PLAYLISTS, { keyPath: 'id' });
       }
     };
   };
@@ -96,12 +102,12 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     if (typeof window === 'undefined') return;
     
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
+      const request = indexedDB.open(DB_NAME, 1);
       
       request.onsuccess = (event: Event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readwrite');
-        const store = transaction.objectStore('tracks');
+        const transaction = db.transaction([STORE_TRACKS], 'readwrite');
+        const store = transaction.objectStore(STORE_TRACKS);
         
         // Convert File to base64 if exists
         if (track.file) {
@@ -129,12 +135,12 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     if (typeof window === 'undefined') return;
     
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
+      const request = indexedDB.open(DB_NAME, 1);
       
       request.onsuccess = (event: Event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readonly');
-        const store = transaction.objectStore('tracks');
+        const transaction = db.transaction([STORE_TRACKS], 'readonly');
+        const store = transaction.objectStore(STORE_TRACKS);
         const getAll = store.getAll();
         
         getAll.onsuccess = () => {
@@ -153,7 +159,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
   const loadNotifications = () => {
     // Load from localStorage or generate sample notifications
-    const stored = localStorage.getItem('jarvis-notifications');
+    const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
     if (stored) {
       setNotifications(JSON.parse(stored));
     } else {
@@ -171,7 +177,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   };
 
   const saveNotifications = (notifs: Notification[]) => {
-    localStorage.setItem('jarvis-notifications', JSON.stringify(notifs));
+    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifs));
   };
 
   const handleSend = () => {

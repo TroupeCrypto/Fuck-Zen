@@ -9,9 +9,9 @@
  * Usage: node tools/jarvis/pr-bridge.js ./tools/jarvis/change.json
  * 
  * Required env vars:
- * - GITHUB_APP_ID
- * - GITHUB_INSTALLATION_ID
- * - GITHUB_APP_PRIVATE_KEY (full PEM text)
+ * - JARVIS_APP_ID
+ * - JARVIS_INSTALLATION_ID
+ * - JARVIS_APP_PRIVATE_KEY (full PEM text)
  */
 
 const crypto = require('crypto');

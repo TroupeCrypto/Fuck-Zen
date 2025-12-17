@@ -25,6 +25,14 @@ interface Notification {
   read: boolean;
 }
 
+interface StoredNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
 interface Track {
   id: string;
   title: string;

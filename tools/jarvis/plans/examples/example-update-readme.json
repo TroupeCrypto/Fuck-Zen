@@ -1,0 +1,16 @@
+{
+  "owner": "TroupeCrypto",
+  "repo": "Fuck-Zen",
+  "base": "main",
+  "branch": "jarvis/update-contributing-guidelines",
+  "title": "Jarvis: Update contributing guidelines",
+  "body": "Objective: Add code of conduct section to contributing guidelines\nScope: docs/CONTRIBUTING.md (create if not exists)\nRisk: Low (documentation only)\nRollback: revert PR.",
+  "commits": [
+    {
+      "path": "docs/CONTRIBUTING.md",
+      "mode": "write",
+      "content": "# Contributing to Troupe Inc.\n\nThank you for your interest in contributing!\n\n## Code of Conduct\n\nWe are committed to providing a welcoming and inspiring community for all.\n\n### Our Standards\n\n- Be respectful and inclusive\n- Provide constructive feedback\n- Focus on what is best for the community\n- Show empathy towards others\n\n## How to Contribute\n\n1. Fork the repository\n2. Create a feature branch\n3. Make your changes\n4. Submit a pull request\n\n## Pull Request Process\n\n1. Ensure your code follows existing conventions\n2. Update documentation as needed\n3. Add tests for new functionality\n4. Wait for review and address feedback\n\n## Questions?\n\nFeel free to open an issue for any questions.\n",
+      "message": "Add contributing guidelines"
+    }
+  ]
+}

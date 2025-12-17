@@ -30,9 +30,29 @@ if [ ! -f "$PLAN_PATH" ]; then
   exit 1
 fi
 
-# Validate JSON
-if ! python3 -m json.tool "$PLAN_PATH" > /dev/null 2>&1; then
+# Validate JSON (try multiple methods)
+JSON_VALID=false
+
+# Try jq first (most reliable)
+if command -v jq &> /dev/null; then
+  if jq empty "$PLAN_PATH" > /dev/null 2>&1; then
+    JSON_VALID=true
+  fi
+# Fall back to python3
+elif command -v python3 &> /dev/null; then
+  if python3 -m json.tool "$PLAN_PATH" > /dev/null 2>&1; then
+    JSON_VALID=true
+  fi
+# Fall back to node
+elif command -v node &> /dev/null; then
+  if node -e "JSON.parse(require('fs').readFileSync('$PLAN_PATH', 'utf8'))" > /dev/null 2>&1; then
+    JSON_VALID=true
+  fi
+fi
+
+if [ "$JSON_VALID" = false ]; then
   echo "❌ Invalid JSON in plan file: $PLAN_PATH"
+  echo "   (Install jq, python3, or node for JSON validation)"
   exit 1
 fi
 

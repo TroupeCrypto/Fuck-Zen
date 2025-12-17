@@ -71,8 +71,6 @@ jobs:
           JARVIS_APP_PRIVATE_KEY: ${{ secrets.JARVIS_APP_PRIVATE_KEY }}
         with:
           script: |
-            const fs = require('fs');
-            const path = require('path');
             const issues = ${{ steps.find_issues.outputs.result }};
             
             for (const issue of issues) {
@@ -100,17 +98,7 @@ jobs:
                   ]
                 };
                 
-                // Ensure directory exists
-                const planDir = path.dirname(planPath);
-                if (!fs.existsSync(planDir)) {
-                  fs.mkdirSync(planDir, { recursive: true });
-                }
-                
-                // Write plan file
-                fs.writeFileSync(planPath, JSON.stringify(plan, null, 2));
-                console.log(`✅ Created plan: ${planPath}`);
-                
-                // Use GitHub API to commit the plan file (safer than shell commands)
+                // Use GitHub API to commit the plan file
                 const fileContent = Buffer.from(JSON.stringify(plan, null, 2)).toString('base64');
                 
                 // Get the default branch

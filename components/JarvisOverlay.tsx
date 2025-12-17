@@ -367,7 +367,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
               <button
                 id="chat-tab"
                 role="tab"
-                aria-selected={activeTab === 'chat'}
+                aria-selected={activeTab === 'chat' ? 'true' : 'false'}
                 aria-controls="chat-panel"
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
@@ -382,7 +382,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
               <button
                 id="scopes-tab"
                 role="tab"
-                aria-selected={activeTab === 'scopes'}
+                aria-selected={activeTab === 'scopes' ? 'true' : 'false'}
                 aria-controls="scopes-panel"
                 onClick={() => setActiveTab('scopes')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
@@ -397,7 +397,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
               <button
                 id="notifications-tab"
                 role="tab"
-                aria-selected={activeTab === 'notifications'}
+                aria-selected={activeTab === 'notifications' ? 'true' : 'false'}
                 aria-controls="notifications-panel"
                 onClick={() => setActiveTab('notifications')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors relative ${
@@ -417,7 +417,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
               <button
                 id="music-tab"
                 role="tab"
-                aria-selected={activeTab === 'music'}
+                aria-selected={activeTab === 'music' ? 'true' : 'false'}
                 aria-controls="music-panel"
                 onClick={() => setActiveTab('music')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${

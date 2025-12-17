@@ -183,6 +183,16 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     });
   };
 
+  const getDefaultNotifications = (): Notification[] => [
+    {
+      id: '1',
+      title: 'System Update',
+      message: 'Jarvis overlay initialized successfully',
+      timestamp: new Date(),
+      read: false
+    }
+  ];
+
   const loadNotifications = () => {
     // Load from localStorage or generate sample notifications
     const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
@@ -207,8 +217,29 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           timestamp: new Date(),
           read: false
         }
-      ];
-      setNotifications(sampleNotifications);
+        
+        // Convert timestamp strings back to Date objects and validate
+        const notifications = parsed.map(notif => {
+          const timestamp = new Date(notif.timestamp);
+          // Check if timestamp is valid
+          if (isNaN(timestamp.getTime())) {
+            throw new Error('Invalid timestamp in notification');
+          }
+          return {
+            ...notif,
+            timestamp
+          };
+        });
+        
+        setNotifications(notifications);
+      } catch (error) {
+        console.error('Failed to load notifications from localStorage:', error);
+        // Clear corrupted data and use sample notifications
+        localStorage.removeItem('jarvis-notifications');
+        setNotifications(getDefaultNotifications());
+      }
+    } else {
+      setNotifications(getDefaultNotifications());
     }
   };
 

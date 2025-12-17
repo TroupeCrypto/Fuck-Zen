@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, MessageSquare, Target, Bell, Music, Send, Command } from 'lucide-react';
+import { Executive, ConnectionStatus } from '../types';
 
 // Database and storage constants
 const DB_NAME = 'JarvisDB';
@@ -35,7 +36,7 @@ interface Track {
 }
 
 interface JarvisOverlayProps {
-  executives?: any[];
+  executives?: Executive[];
 }
 
 type TabType = 'chat' | 'scopes' | 'notifications' | 'music';
@@ -470,10 +471,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-white font-medium">{exec.name}</p>
-                            <p className="text-gray-400 text-sm">{exec.title}</p>
+                            <p className="text-gray-400 text-sm">{exec.role}</p>
                           </div>
                           <div className={`w-3 h-3 rounded-full ${
-                            exec.status === 'active' ? 'bg-green-500' : 'bg-gray-600'
+                            exec.status === ConnectionStatus.ACTIVE ? 'bg-green-500' : 'bg-gray-600'
                           }`}></div>
                         </div>
                       </div>

@@ -178,7 +178,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     if (!input.trim()) return;
 
     const newMessage: JarvisMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       text: input,
       sender: 'user',
       timestamp: new Date()
@@ -191,7 +191,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     setIsTyping(true);
     setTimeout(() => {
       const response: JarvisMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         text: commandMode 
           ? `Command executed: ${input}`
           : `Processing your request: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}"`,
@@ -213,7 +213,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
       // Parse metadata (simplified - in production would use music-metadata library)
       const track: Track = {
-        id: Date.now().toString() + i,
+        id: crypto.randomUUID(),
         title: file.name.replace(/\.[^/.]+$/, ''),
         artist: 'Unknown Artist',
         album: 'Unknown Album',

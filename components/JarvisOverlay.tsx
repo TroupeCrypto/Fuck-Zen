@@ -284,6 +284,11 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     setTouchEnd(null);
   };
 
+  const handleCloseOverlay = () => {
+    setIsOpen(false);
+    setIsMinimized(true);
+  };
+
   return (
     <>
       {/* Floating J Launcher */}
@@ -311,8 +316,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
-              setIsOpen(false);
-              setIsMinimized(true);
+              handleCloseOverlay();
             }
           }}
         >
@@ -335,20 +339,14 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Minimize"
                 >
                   <span className="text-xl">−</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Close"
                 >

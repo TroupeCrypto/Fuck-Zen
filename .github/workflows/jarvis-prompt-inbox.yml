@@ -71,8 +71,6 @@ jobs:
           JARVIS_APP_PRIVATE_KEY: ${{ secrets.JARVIS_APP_PRIVATE_KEY }}
         with:
           script: |
-            const fs = require('fs');
-            const path = require('path');
             const issues = ${{ steps.find_issues.outputs.result }};
             
             for (const issue of issues) {

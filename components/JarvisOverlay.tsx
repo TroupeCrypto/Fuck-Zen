@@ -445,8 +445,12 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-700">
+            <div role="tablist" className="flex border-b border-gray-700">
               <button
+                id="chat-tab"
+                role="tab"
+                aria-selected={activeTab === 'chat' ? 'true' : 'false'}
+                aria-controls="chat-panel"
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
                   activeTab === 'chat' 
@@ -458,6 +462,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                 <span className="text-sm font-medium">Chat</span>
               </button>
               <button
+                id="scopes-tab"
+                role="tab"
+                aria-selected={activeTab === 'scopes' ? 'true' : 'false'}
+                aria-controls="scopes-panel"
                 onClick={() => setActiveTab('scopes')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
                   activeTab === 'scopes' 
@@ -469,6 +477,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                 <span className="text-sm font-medium">Scopes</span>
               </button>
               <button
+                id="notifications-tab"
+                role="tab"
+                aria-selected={activeTab === 'notifications' ? 'true' : 'false'}
+                aria-controls="notifications-panel"
                 onClick={() => setActiveTab('notifications')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors relative ${
                   activeTab === 'notifications' 
@@ -485,6 +497,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                 )}
               </button>
               <button
+                id="music-tab"
+                role="tab"
+                aria-selected={activeTab === 'music' ? 'true' : 'false'}
+                aria-controls="music-panel"
                 onClick={() => setActiveTab('music')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
                   activeTab === 'music' 
@@ -501,7 +517,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
             <div className="flex-1 overflow-y-auto p-4">
               {/* Chat Tab */}
               {activeTab === 'chat' && (
-                <div className="flex flex-col h-full">
+                <div role="tabpanel" id="chat-panel" aria-labelledby="chat-tab" className="flex flex-col h-full">
                   <div className="flex-1 overflow-y-auto space-y-3 mb-4">
                     {messages.map(msg => (
                       <div
@@ -540,7 +556,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
               {/* Scopes Tab */}
               {activeTab === 'scopes' && (
-                <div className="space-y-3">
+                <div role="tabpanel" id="scopes-panel" aria-labelledby="scopes-tab" className="space-y-3">
                   <h3 className="text-white font-semibold mb-3">System Scopes</h3>
                   {executives.length > 0 ? (
                     executives.map(exec => (
@@ -567,7 +583,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
               {/* Notifications Tab */}
               {activeTab === 'notifications' && (
-                <div className="space-y-3">
+                <div role="tabpanel" id="notifications-panel" aria-labelledby="notifications-tab" className="space-y-3">
                   <h3 className="text-white font-semibold mb-3">Notifications</h3>
                   {notifications.length > 0 ? (
                     notifications.map(notif => (
@@ -603,7 +619,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
               {/* Music Tab */}
               {activeTab === 'music' && (
-                <div className="space-y-4">
+                <div role="tabpanel" id="music-panel" aria-labelledby="music-tab" className="space-y-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-white font-semibold">Music Library</h3>
                     <button

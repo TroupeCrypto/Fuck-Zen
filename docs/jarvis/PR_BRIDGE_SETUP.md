@@ -23,15 +23,15 @@ Navigate to your repository settings and add the following secrets:
 
 Add these three secrets:
 
-1. **GITHUB_APP_ID**
+1. **JARVIS_APP_ID**
    - Value: `2485887`
    - Description: The unique identifier for your GitHub App
 
-2. **GITHUB_INSTALLATION_ID**
+2. **JARVIS_INSTALLATION_ID**
    - Value: `99935877`
    - Description: The installation ID for this repository
 
-3. **GITHUB_APP_PRIVATE_KEY**
+3. **JARVIS_APP_PRIVATE_KEY**
    - Value: Paste the **entire contents** of your `.pem` file
    - Description: The private key for GitHub App authentication
    - Format: Must include `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----` headers
@@ -162,9 +162,9 @@ You can test the script locally without running the GitHub Action:
 
 ```bash
 # Set environment variables
-export GITHUB_APP_ID=2485887
-export GITHUB_INSTALLATION_ID=99935877
-export GITHUB_APP_PRIVATE_KEY="$(cat /path/to/your/key.pem)"
+export JARVIS_APP_ID=2485887
+export JARVIS_INSTALLATION_ID=99935877
+export JARVIS_APP_PRIVATE_KEY="$(cat /path/to/your/key.pem)"
 
 # Run the script
 node tools/jarvis/pr-bridge.js tools/jarvis/change.json

@@ -28,24 +28,24 @@ jobs:
       
       - name: Validate required secrets
         env:
-          APP_ID: ${{ secrets.GITHUB_APP_ID }}
-          INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
-          PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          APP_ID: ${{ secrets.JARVIS_APP_ID }}
+          INSTALLATION_ID: ${{ secrets.JARVIS_INSTALLATION_ID }}
+          PRIVATE_KEY: ${{ secrets.JARVIS_APP_PRIVATE_KEY }}
         run: |
           echo "🔍 Validating required secrets..."
           
           if [ -z "$APP_ID" ]; then
-            echo "❌ ERROR: GITHUB_APP_ID secret is not set"
+            echo "❌ ERROR: JARVIS_APP_ID secret is not set"
             exit 1
           fi
           
           if [ -z "$INSTALLATION_ID" ]; then
-            echo "❌ ERROR: GITHUB_INSTALLATION_ID secret is not set"
+            echo "❌ ERROR: JARVIS_INSTALLATION_ID secret is not set"
             exit 1
           fi
           
           if [ -z "$PRIVATE_KEY" ]; then
-            echo "❌ ERROR: GITHUB_APP_PRIVATE_KEY secret is not set"
+            echo "❌ ERROR: JARVIS_APP_PRIVATE_KEY secret is not set"
             exit 1
           fi
           
@@ -53,12 +53,9 @@ jobs:
       
       - name: Run Jarvis PR Bridge
         env:
-          JARVIS_APP_ID: ${{ secrets.GITHUB_APP_ID }}
-          JARVIS_INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
-          JARVIS_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
-          GITHUB_INSTALLATION_ID: ${{ secrets.GITHUB_INSTALLATION_ID }}
-          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          JARVIS_APP_ID: ${{ secrets.JARVIS_APP_ID }}
+          JARVIS_INSTALLATION_ID: ${{ secrets.JARVIS_INSTALLATION_ID }}
+          JARVIS_APP_PRIVATE_KEY: ${{ secrets.JARVIS_APP_PRIVATE_KEY }}
         run: |
           echo "🚀 Running Jarvis PR Bridge..."
           echo "📋 Plan file: ${{ inputs.plan_path }}"

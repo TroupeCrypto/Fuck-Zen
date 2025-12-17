@@ -155,7 +155,52 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     // Load from localStorage or generate sample notifications
     const stored = localStorage.getItem('jarvis-notifications');
     if (stored) {
-      setNotifications(JSON.parse(stored));
+      try {
+        const parsed = JSON.parse(stored);
+        
+        // Validate that parsed data is an array
+        if (!Array.isArray(parsed)) {
+          console.warn('Invalid notifications data: expected array');
+          throw new Error('Invalid data structure');
+        }
+        
+        // Validate each notification has required fields
+        const isValid = parsed.every(notif => 
+          notif &&
+          typeof notif === 'object' &&
+          typeof notif.id === 'string' &&
+          typeof notif.title === 'string' &&
+          typeof notif.message === 'string' &&
+          typeof notif.read === 'boolean'
+        );
+        
+        if (!isValid) {
+          console.warn('Invalid notifications data: missing required fields');
+          throw new Error('Invalid notification structure');
+        }
+        
+        // Convert timestamp strings back to Date objects
+        const notifications = parsed.map(notif => ({
+          ...notif,
+          timestamp: new Date(notif.timestamp)
+        }));
+        
+        setNotifications(notifications);
+      } catch (error) {
+        console.error('Failed to load notifications from localStorage:', error);
+        // Clear corrupted data and use sample notifications
+        localStorage.removeItem('jarvis-notifications');
+        const sampleNotifications: Notification[] = [
+          {
+            id: '1',
+            title: 'System Update',
+            message: 'Jarvis overlay initialized successfully',
+            timestamp: new Date(),
+            read: false
+          }
+        ];
+        setNotifications(sampleNotifications);
+      }
     } else {
       const sampleNotifications: Notification[] = [
         {

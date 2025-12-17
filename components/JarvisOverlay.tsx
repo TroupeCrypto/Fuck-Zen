@@ -52,11 +52,11 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dbRef = useRef<IDBDatabase | null>(null);
 
   // Initialize IndexedDB for music storage
   useEffect(() => {
     initIndexedDB();
-    loadTracksFromDB();
     loadNotifications();
   }, []);
 
@@ -90,64 +90,66 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
         db.createObjectStore('playlists', { keyPath: 'id' });
       }
     };
+    
+    request.onsuccess = (event: Event) => {
+      dbRef.current = (event.target as IDBOpenDBRequest).result;
+      // Load tracks after database is ready
+      loadTracksFromDB();
+    };
+    
+    request.onerror = (event: Event) => {
+      console.error('IndexedDB initialization error:', (event.target as IDBOpenDBRequest).error);
+    };
   };
 
   const saveTrackToDB = async (track: Track) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !dbRef.current) return;
     
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
+      const db = dbRef.current!;
+      const transaction = db.transaction(['tracks'], 'readwrite');
+      const store = transaction.objectStore('tracks');
       
-      request.onsuccess = (event: Event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readwrite');
-        const store = transaction.objectStore('tracks');
-        
-        // Convert File to base64 if exists
-        if (track.file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const trackData = {
-              ...track,
-              fileData: reader.result
-            };
-            delete trackData.file;
-            store.put(trackData);
+      // Convert File to base64 if exists
+      if (track.file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const trackData = {
+            ...track,
+            fileData: reader.result
           };
-          reader.readAsDataURL(track.file);
-        } else {
-          store.put(track);
-        }
-        
-        transaction.oncomplete = () => resolve(true);
-        transaction.onerror = () => reject(transaction.error);
-      };
+          delete trackData.file;
+          store.put(trackData);
+        };
+        reader.readAsDataURL(track.file);
+      } else {
+        store.put(track);
+      }
+      
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = () => reject(transaction.error);
     });
   };
 
   const loadTracksFromDB = async () => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !dbRef.current) return;
     
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
+      const db = dbRef.current!;
+      const transaction = db.transaction(['tracks'], 'readonly');
+      const store = transaction.objectStore('tracks');
+      const getAll = store.getAll();
       
-      request.onsuccess = (event: Event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readonly');
-        const store = transaction.objectStore('tracks');
-        const getAll = store.getAll();
-        
-        getAll.onsuccess = () => {
-          const loadedTracks = getAll.result.map((t: any) => ({
-            ...t,
-            url: t.fileData
-          }));
-          setTracks(loadedTracks);
-          resolve(loadedTracks);
-        };
-        
-        getAll.onerror = () => reject(getAll.error);
+      getAll.onsuccess = () => {
+        const loadedTracks = getAll.result.map((t: any) => ({
+          ...t,
+          url: t.fileData
+        }));
+        setTracks(loadedTracks);
+        resolve(loadedTracks);
       };
+      
+      getAll.onerror = () => reject(getAll.error);
     });
   };
 

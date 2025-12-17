@@ -1,0 +1,16 @@
+{
+  "owner": "TroupeCrypto",
+  "repo": "Fuck-Zen",
+  "base": "main",
+  "branch": "jarvis/add-hello-world-example",
+  "title": "Jarvis: Add Hello World example",
+  "body": "Objective: Provide simple example code for new developers\nScope: examples/hello-world.js\nRisk: Low (example code only)\nRollback: revert PR.",
+  "commits": [
+    {
+      "path": "examples/hello-world.js",
+      "mode": "write",
+      "content": "/**\n * Hello World Example\n * \n * Demonstrates basic usage of the Troupe Inc. system.\n */\n\nconst { System } = require('../lib/system');\n\n// Initialize the system\nconst system = new System({\n  environment: 'development',\n  debug: true\n});\n\n// Execute a simple command\nasync function main() {\n  try {\n    console.log('🚀 Starting Hello World example...');\n    \n    const result = await system.execute({\n      command: 'status',\n      params: {}\n    });\n    \n    console.log('✅ Result:', result);\n    console.log('👋 Hello from Troupe Inc!');\n  } catch (error) {\n    console.error('❌ Error:', error.message);\n    process.exit(1);\n  }\n}\n\n// Run the example\nmain();\n",
+      "message": "Add hello world example"
+    }
+  ]
+}

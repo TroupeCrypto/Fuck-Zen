@@ -1,7 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { X, MessageSquare, Target, Bell, Music, Send, Command } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  X,
+  MessageSquare,
+  Target,
+  Bell,
+  Music,
+  Send,
+  Command,
+  Play,
+  Pause,
+  Upload,
+} from 'lucide-react';
+import { Executive, ConnectionStatus } from '../types';
+
+const DB_NAME = 'JarvisDB';
+const DB_VERSION = 1;
+const STORE_TRACKS = 'tracks';
+const STORE_PLAYLISTS = 'playlists';
+const STORAGE_KEY_NOTIFICATIONS = 'jarvis-notifications';
 
 interface JarvisMessage {
   id: string;
@@ -18,201 +36,303 @@ interface Notification {
   read: boolean;
 }
 
+interface StoredNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
 interface Track {
   id: string;
   title: string;
   artist: string;
   album: string;
   artwork?: string;
-  file?: File;
-  url?: string;
+  file?: File; // ephemeral (never stored in IDB)
+  url?: string; // blob URL (ephemeral) OR data URL (persisted)
+}
+
+interface StoredTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  artwork?: string;
+  fileData?: string; // DataURL
 }
 
 interface JarvisOverlayProps {
-  executives?: any[];
+  executives?: Executive[];
 }
 
 type TabType = 'chat' | 'scopes' | 'notifications' | 'music';
+
+function safeUUID() {
+  try {
+    // @ts-ignore
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  } catch {}
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function toDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  });
+}
+
+function openJarvisDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !('indexedDB' in window)) {
+      reject(new Error('IndexedDB unavailable'));
+      return;
+    }
+
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+
+      if (!db.objectStoreNames.contains(STORE_TRACKS)) {
+        db.createObjectStore(STORE_TRACKS, { keyPath: 'id' });
+      }
+
+      if (!db.objectStoreNames.contains(STORE_PLAYLISTS)) {
+        db.createObjectStore(STORE_PLAYLISTS, { keyPath: 'id' });
+      }
+    };
+
+    req.onsuccess = (event) => resolve((event.target as IDBOpenDBRequest).result);
+    req.onerror = () => reject(req.error || new Error('Failed to open IndexedDB'));
+  });
+}
+
+function idbPut(db: IDBDatabase, storeName: string, value: any): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([storeName], 'readwrite');
+    const store = tx.objectStore(storeName);
+    store.put(value);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error('IndexedDB put failed'));
+    tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+  });
+}
+
+function idbGetAll<T = any>(db: IDBDatabase, storeName: string): Promise<T[]> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([storeName], 'readonly');
+    const store = tx.objectStore(storeName);
+    const req = store.getAll();
+    req.onsuccess = () => resolve((req.result || []) as T[]);
+    req.onerror = () => reject(req.error || new Error('IndexedDB getAll failed'));
+  });
+}
 
 const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('chat');
+
   const [messages, setMessages] = useState<JarvisMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [commandMode, setCommandMode] = useState(false);
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const blobUrlsRef = useRef<Set<string>>(new Set());
+  const dbRef = useRef<IDBDatabase | null>(null);
 
-  // Initialize IndexedDB for music storage
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
+  );
+
+  // Init DB + load tracks + load notifications
   useEffect(() => {
-    initIndexedDB();
-    loadTracksFromDB();
-    loadNotifications();
+    let cancelled = false;
+
+    (async () => {
+      // Notifications (localStorage) first
+      try {
+        loadNotifications();
+      } catch (e) {
+        console.error(e);
+      }
+
+      // IndexedDB for tracks
+      try {
+        const db = await openJarvisDB();
+        if (cancelled) return;
+        dbRef.current = db;
+        await loadTracksFromDB();
+      } catch (e) {
+        console.error('IndexedDB init/load failed:', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      // close DB handle
+      try {
+        dbRef.current?.close();
+      } catch {}
+      dbRef.current = null;
+      // revoke blob URLs
+      try {
+        setTracks((prev) => {
+          prev.forEach((t) => {
+            if (t.url && t.url.startsWith('blob:')) URL.revokeObjectURL(t.url);
+          });
+          return prev;
+        });
+      } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-scroll messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Check for command mode
+  // Command mode detection
   useEffect(() => {
-    if (input.startsWith('/')) {
-      setCommandMode(true);
-    } else {
-      setCommandMode(false);
-    }
+    setCommandMode(input.startsWith('/'));
   }, [input]);
 
-  // Cleanup blob URLs on unmount
-  useEffect(() => {
-    return () => {
-      // Revoke all blob URLs when component unmounts
-      blobUrlsRef.current.forEach(url => {
-        URL.revokeObjectURL(url);
-      });
-      blobUrlsRef.current.clear();
-    };
-  }, []);
-
-  const initIndexedDB = () => {
-    if (typeof window === 'undefined') return;
-    
-    const request = indexedDB.open('JarvisDB', 1);
-    
-    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      
-      if (!db.objectStoreNames.contains('tracks')) {
-        db.createObjectStore('tracks', { keyPath: 'id' });
-      }
-      
-      if (!db.objectStoreNames.contains('playlists')) {
-        db.createObjectStore('playlists', { keyPath: 'id' });
-      }
-    };
-  };
-
-  const saveTrackToDB = async (track: Track) => {
-    if (typeof window === 'undefined') return;
-    
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
-      
-      request.onsuccess = (event: Event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readwrite');
-        const store = transaction.objectStore('tracks');
-        
-        // Convert File to base64 if exists
-        if (track.file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const trackData = {
-              ...track,
-              fileData: reader.result
-            };
-            delete trackData.file;
-            store.put(trackData);
-          };
-          reader.readAsDataURL(track.file);
-        } else {
-          store.put(track);
-        }
-        
-        transaction.oncomplete = () => resolve(true);
-        transaction.onerror = () => reject(transaction.error);
-      };
-    });
-  };
-
-  const loadTracksFromDB = async () => {
-    if (typeof window === 'undefined') return;
-    
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
-      
-      request.onsuccess = (event: Event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readonly');
-        const store = transaction.objectStore('tracks');
-        const getAll = store.getAll();
-        
-        getAll.onsuccess = () => {
-          const loadedTracks = getAll.result.map((t: any) => ({
-            ...t,
-            url: t.fileData
-          }));
-          setTracks(loadedTracks);
-          resolve(loadedTracks);
-        };
-        
-        getAll.onerror = () => reject(getAll.error);
-      };
-    });
-  };
+  const getDefaultNotifications = (): Notification[] => [
+    {
+      id: '1',
+      title: 'System Update',
+      message: 'Jarvis overlay initialized successfully',
+      timestamp: new Date(),
+      read: false,
+    },
+  ];
 
   const loadNotifications = () => {
-    // Load from localStorage or generate sample notifications
-    const stored = localStorage.getItem('jarvis-notifications');
-    if (stored) {
-      setNotifications(JSON.parse(stored));
-    } else {
-      const sampleNotifications: Notification[] = [
-        {
-          id: '1',
-          title: 'System Update',
-          message: 'Jarvis overlay initialized successfully',
-          timestamp: new Date(),
-          read: false
-        }
-      ];
-      setNotifications(sampleNotifications);
+    if (typeof window === 'undefined') return;
+
+    const raw = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
+    if (!raw) {
+      setNotifications(getDefaultNotifications());
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as StoredNotification[];
+      const hydrated: Notification[] = (parsed || []).map((n) => {
+        const ts = new Date(n.timestamp);
+        if (isNaN(ts.getTime())) throw new Error('Invalid timestamp in stored notifications');
+        return { ...n, timestamp: ts };
+      });
+      setNotifications(hydrated.length ? hydrated : getDefaultNotifications());
+    } catch (err) {
+      console.error('Failed to load notifications from localStorage:', err);
+      localStorage.removeItem(STORAGE_KEY_NOTIFICATIONS);
+      setNotifications(getDefaultNotifications());
     }
   };
 
   const saveNotifications = (notifs: Notification[]) => {
-    localStorage.setItem('jarvis-notifications', JSON.stringify(notifs));
+    if (typeof window === 'undefined') return;
+    const toStore: StoredNotification[] = notifs.map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      timestamp: n.timestamp.toISOString(),
+      read: n.read,
+    }));
+    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(toStore));
+  };
+
+  const markNotificationRead = (id: string) => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      saveNotifications(updated);
+      return updated;
+    });
+  };
+
+  const saveTrackToDB = async (track: Track) => {
+    if (typeof window === 'undefined') return;
+    if (!dbRef.current) {
+      dbRef.current = await openJarvisDB();
+    }
+
+    const db = dbRef.current!;
+    const stored: StoredTrack = {
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      artwork: track.artwork,
+      fileData: track.url && track.url.startsWith('data:') ? track.url : undefined,
+    };
+
+    await idbPut(db, STORE_TRACKS, stored);
+  };
+
+  const loadTracksFromDB = async () => {
+    if (typeof window === 'undefined') return;
+    if (!dbRef.current) return;
+
+    const db = dbRef.current;
+    const stored = await idbGetAll<StoredTrack>(db, STORE_TRACKS);
+
+    const hydrated: Track[] = (stored || []).map((t) => ({
+      id: t.id,
+      title: t.title,
+      artist: t.artist,
+      album: t.album,
+      artwork: t.artwork,
+      url: t.fileData, // persisted DataURL
+    }));
+
+    setTracks(hydrated);
   };
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    const text = input.trim();
+    if (!text) return;
 
     const newMessage: JarvisMessage = {
-      id: Date.now().toString(),
-      text: input,
+      id: safeUUID(),
+      text,
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    setMessages((prev) => [...prev, newMessage]);
     setInput('');
 
-    // Simulate Jarvis response
     setIsTyping(true);
-    setTimeout(() => {
+    window.setTimeout(() => {
       const response: JarvisMessage = {
-        id: (Date.now() + 1).toString(),
-        text: commandMode 
-          ? `Command executed: ${input}`
-          : `Processing your request: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}"`,
+        id: safeUUID(),
+        text: commandMode
+          ? `Command executed: ${text}`
+          : `Processing your request: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
         sender: 'jarvis',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, response]);
+      setMessages((prev) => [...prev, response]);
       setIsTyping(false);
-    }, 1000);
+    }, 650);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,32 +343,54 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
       const file = files[i];
       if (!file.type.startsWith('audio/')) continue;
 
-      // Create blob URL and track it for cleanup
-      const blobUrl = URL.createObjectURL(file);
-      blobUrlsRef.current.add(blobUrl);
+      const id = safeUUID();
+      const title = file.name.replace(/\.[^/.]+$/, '') || 'Untitled Track';
 
-      // Parse metadata (simplified - in production would use music-metadata library)
+      // Persisted URL should be DataURL (so it survives refresh). Blob URLs are not persistent.
+      let dataUrl = '';
+      try {
+        dataUrl = await toDataURL(file);
+      } catch (err) {
+        console.error('Failed to read audio file:', err);
+        continue;
+      }
+
       const track: Track = {
-        id: Date.now().toString() + i,
-        title: file.name.replace(/\.[^/.]+$/, ''),
+        id,
+        title,
         artist: 'Unknown Artist',
         album: 'Unknown Album',
-        file: file,
-        url: blobUrl
+        url: dataUrl,
       };
 
-      await saveTrackToDB(track);
-      setTracks(prev => [...prev, track]);
+      try {
+        await saveTrackToDB(track);
+      } catch (err) {
+        console.error('Failed to save track to IndexedDB:', err);
+      }
+
+      setTracks((prev) => [...prev, track]);
     }
+
+    // allow re-uploading same file selection
+    e.target.value = '';
   };
 
   const playTrack = (track: Track) => {
-    if (audioRef.current && track.url) {
-      setCurrentTrack(track);
-      audioRef.current.src = track.url;
-      audioRef.current.play();
-      setIsPlaying(true);
+    if (!audioRef.current) return;
+    if (!track.url) return;
+
+    setCurrentTrack(track);
+    audioRef.current.src = track.url;
+
+    const p = audioRef.current.play();
+    if (p && typeof (p as any).catch === 'function') {
+      (p as any).catch((err: any) => {
+        console.error('Audio play failed:', err);
+        setIsPlaying(false);
+      });
     }
+    setIsPlaying(true);
   };
 
   const togglePlayPause = () => {
@@ -258,20 +400,16 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      const p = audioRef.current.play();
+      if (p && typeof (p as any).catch === 'function') {
+        (p as any).catch((err: any) => {
+          console.error('Audio play failed:', err);
+          setIsPlaying(false);
+        });
+      }
       setIsPlaying(true);
     }
   };
-
-  const markNotificationRead = (id: string) => {
-    const updated = notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    );
-    setNotifications(updated);
-    saveNotifications(updated);
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   // Mobile swipe to close
   const minSwipeDistance = 50;
@@ -286,18 +424,23 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   };
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
+    if (touchStart == null || touchEnd == null) return;
+
     const distance = touchStart - touchEnd;
     const isDownSwipe = distance < -minSwipeDistance;
-    
+
     if (isDownSwipe) {
       setIsOpen(false);
       setIsMinimized(true);
     }
-    
+
     setTouchStart(null);
     setTouchEnd(null);
+  };
+
+  const handleCloseOverlay = () => {
+    setIsOpen(false);
+    setIsMinimized(true);
   };
 
   return (
@@ -323,17 +466,17 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
       {/* Overlay Modal */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsOpen(false);
-              setIsMinimized(true);
-            }
+            if (e.target === e.currentTarget) handleCloseOverlay();
           }}
         >
-          <div 
+          <div
             className="bg-gray-900 w-full md:w-[600px] md:max-h-[700px] h-[80vh] md:h-auto rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col border border-gray-700"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jarvis-header"
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
@@ -345,26 +488,22 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                   J
                 </div>
                 <div>
-                  <h2 className="text-white font-semibold">Jarvis</h2>
+                  <h2 id="jarvis-header" className="text-white font-semibold">
+                    Jarvis
+                  </h2>
                   <p className="text-gray-400 text-xs">AI Assistant</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Minimize"
                 >
                   <span className="text-xl">−</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Close"
                 >
@@ -379,34 +518,48 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-700">
+            <div role="tablist" className="flex border-b border-gray-700">
               <button
+                id="chat-tab"
+                role="tab"
+                aria-selected={activeTab === 'chat'}
+                aria-controls="chat-panel"
                 onClick={() => setActiveTab('chat')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
-                  activeTab === 'chat' 
-                    ? 'bg-blue-600 text-white' 
+                  activeTab === 'chat'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white'
                 }`}
               >
                 <MessageSquare size={18} />
                 <span className="text-sm font-medium">Chat</span>
               </button>
+
               <button
+                id="scopes-tab"
+                role="tab"
+                aria-selected={activeTab === 'scopes'}
+                aria-controls="scopes-panel"
                 onClick={() => setActiveTab('scopes')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
-                  activeTab === 'scopes' 
-                    ? 'bg-blue-600 text-white' 
+                  activeTab === 'scopes'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white'
                 }`}
               >
                 <Target size={18} />
                 <span className="text-sm font-medium">Scopes</span>
               </button>
+
               <button
+                id="notifications-tab"
+                role="tab"
+                aria-selected={activeTab === 'notifications'}
+                aria-controls="notifications-panel"
                 onClick={() => setActiveTab('notifications')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors relative ${
-                  activeTab === 'notifications' 
-                    ? 'bg-blue-600 text-white' 
+                  activeTab === 'notifications'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white'
                 }`}
               >
@@ -418,11 +571,16 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                   </span>
                 )}
               </button>
+
               <button
+                id="music-tab"
+                role="tab"
+                aria-selected={activeTab === 'music'}
+                aria-controls="music-panel"
                 onClick={() => setActiveTab('music')}
                 className={`flex-1 flex items-center justify-center space-x-2 py-3 transition-colors ${
-                  activeTab === 'music' 
-                    ? 'bg-blue-600 text-white' 
+                  activeTab === 'music'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-800 text-gray-400 hover:text-white'
                 }`}
               >
@@ -435,9 +593,14 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
             <div className="flex-1 overflow-y-auto p-4">
               {/* Chat Tab */}
               {activeTab === 'chat' && (
-                <div className="flex flex-col h-full">
+                <div
+                  role="tabpanel"
+                  id="chat-panel"
+                  aria-labelledby="chat-tab"
+                  className="flex flex-col h-full"
+                >
                   <div className="flex-1 overflow-y-auto space-y-3 mb-4">
-                    {messages.map(msg => (
+                    {messages.map((msg) => (
                       <div
                         key={msg.id}
                         className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -451,22 +614,27 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                         >
                           <p className="text-sm">{msg.text}</p>
                           <p className="text-xs opacity-70 mt-1">
-                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {msg.timestamp.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
                           </p>
                         </div>
                       </div>
                     ))}
+
                     {isTyping && (
                       <div className="flex justify-start">
                         <div className="bg-gray-800 text-gray-200 rounded-2xl px-4 py-2">
                           <div className="flex space-x-1">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce-delay-100"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce-delay-200"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:120ms]"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:240ms]"></div>
                           </div>
                         </div>
                       </div>
                     )}
+
                     <div ref={messagesEndRef} />
                   </div>
                 </div>
@@ -474,19 +642,21 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
               {/* Scopes Tab */}
               {activeTab === 'scopes' && (
-                <div className="space-y-3">
+                <div role="tabpanel" id="scopes-panel" aria-labelledby="scopes-tab" className="space-y-3">
                   <h3 className="text-white font-semibold mb-3">System Scopes</h3>
                   {executives.length > 0 ? (
-                    executives.map(exec => (
+                    executives.map((exec) => (
                       <div key={exec.id} className="bg-gray-800 rounded-lg p-3">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-white font-medium">{exec.name}</p>
-                            <p className="text-gray-400 text-sm">{exec.title}</p>
+                            <p className="text-gray-400 text-sm">{exec.role}</p>
                           </div>
-                          <div className={`w-3 h-3 rounded-full ${
-                            exec.status === 'active' ? 'bg-green-500' : 'bg-gray-600'
-                          }`}></div>
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              exec.status === ConnectionStatus.ACTIVE ? 'bg-green-500' : 'bg-gray-600'
+                            }`}
+                          ></div>
                         </div>
                       </div>
                     ))
@@ -501,10 +671,15 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
               {/* Notifications Tab */}
               {activeTab === 'notifications' && (
-                <div className="space-y-3">
+                <div
+                  role="tabpanel"
+                  id="notifications-panel"
+                  aria-labelledby="notifications-tab"
+                  className="space-y-3"
+                >
                   <h3 className="text-white font-semibold mb-3">Notifications</h3>
                   {notifications.length > 0 ? (
-                    notifications.map(notif => (
+                    notifications.map((notif) => (
                       <div
                         key={notif.id}
                         onClick={() => markNotificationRead(notif.id)}
@@ -516,13 +691,9 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                           <div className="flex-1">
                             <h4 className="text-white font-medium">{notif.title}</h4>
                             <p className="text-gray-400 text-sm mt-1">{notif.message}</p>
-                            <p className="text-gray-500 text-xs mt-2">
-                              {notif.timestamp.toLocaleString()}
-                            </p>
+                            <p className="text-gray-500 text-xs mt-2">{notif.timestamp.toLocaleString()}</p>
                           </div>
-                          {!notif.read && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-1"></div>
-                          )}
+                          {!notif.read && <div className="w-2 h-2 bg-blue-500 rounded-full mt-1"></div>}
                         </div>
                       </div>
                     ))
@@ -537,13 +708,15 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
               {/* Music Tab */}
               {activeTab === 'music' && (
-                <div className="space-y-4">
+                <div role="tabpanel" id="music-panel" aria-labelledby="music-tab" className="space-y-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-white font-semibold">Music Library</h3>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+                      type="button"
                     >
+                      <Upload size={16} />
                       Upload
                     </button>
                     <input
@@ -560,6 +733,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                     <div className="bg-gradient-to-br from-blue-900/50 to-purple-900/50 rounded-lg p-4 border border-blue-700">
                       <div className="flex items-center space-x-4">
                         {currentTrack.artwork ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={currentTrack.artwork} alt="Album art" className="w-16 h-16 rounded-lg" />
                         ) : (
                           <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
@@ -574,8 +748,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                         <button
                           onClick={togglePlayPause}
                           className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
+                          type="button"
+                          aria-label={isPlaying ? 'Pause' : 'Play'}
                         >
-                          {isPlaying ? '⏸' : '▶'}
+                          {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                         </button>
                       </div>
                     </div>
@@ -583,7 +759,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
                   <div className="space-y-2">
                     {tracks.length > 0 ? (
-                      tracks.map(track => (
+                      tracks.map((track) => (
                         <div
                           key={track.id}
                           onClick={() => playTrack(track)}
@@ -592,9 +768,15 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                               ? 'bg-blue-900/50 border border-blue-700'
                               : 'bg-gray-800 hover:bg-gray-700'
                           }`}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') playTrack(track);
+                          }}
                         >
                           <div className="flex items-center space-x-3">
                             {track.artwork ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img src={track.artwork} alt="Album art" className="w-10 h-10 rounded" />
                             ) : (
                               <div className="w-10 h-10 bg-gray-700 rounded flex items-center justify-center">
@@ -603,7 +785,9 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                             )}
                             <div className="flex-1">
                               <p className="text-white text-sm font-medium">{track.title}</p>
-                              <p className="text-gray-400 text-xs">{track.artist} • {track.album}</p>
+                              <p className="text-gray-400 text-xs">
+                                {track.artist} • {track.album}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -629,17 +813,25 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                     <span>Command Mode</span>
                   </div>
                 )}
-                <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex space-x-2">
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSend();
+                  }}
+                  className="flex space-x-2"
+                >
                   <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={commandMode ? "Enter command..." : "Type a message..."}
+                    placeholder={commandMode ? 'Enter command...' : 'Type a message...'}
                     className="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
                   />
                   <button
                     type="submit"
                     className="bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 transition-colors"
+                    aria-label="Send"
                   >
                     <Send size={18} />
                   </button>
@@ -650,7 +842,6 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
         </div>
       )}
 
-      {/* Hidden audio element */}
       <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
     </>
   );

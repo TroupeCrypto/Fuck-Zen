@@ -2,6 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, MessageSquare, Target, Bell, Music, Send, Command } from 'lucide-react';
+import { Executive, ConnectionStatus } from '../types';
+
+// Database and storage constants
+const DB_NAME = 'JarvisDB';
+const STORE_TRACKS = 'tracks';
+const STORE_PLAYLISTS = 'playlists';
+const STORAGE_KEY_NOTIFICATIONS = 'jarvis-notifications';
 
 interface JarvisMessage {
   id: string;
@@ -29,7 +36,7 @@ interface Track {
 }
 
 interface JarvisOverlayProps {
-  executives?: any[];
+  executives?: Executive[];
 }
 
 type TabType = 'chat' | 'scopes' | 'notifications' | 'music';
@@ -77,17 +84,17 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const initIndexedDB = () => {
     if (typeof window === 'undefined') return;
     
-    const request = indexedDB.open('JarvisDB', 1);
+    const request = indexedDB.open(DB_NAME, 1);
     
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = (event.target as IDBOpenDBRequest).result;
       
-      if (!db.objectStoreNames.contains('tracks')) {
-        db.createObjectStore('tracks', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_TRACKS)) {
+        db.createObjectStore(STORE_TRACKS, { keyPath: 'id' });
       }
       
-      if (!db.objectStoreNames.contains('playlists')) {
-        db.createObjectStore('playlists', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_PLAYLISTS)) {
+        db.createObjectStore(STORE_PLAYLISTS, { keyPath: 'id' });
       }
     };
     
@@ -117,6 +124,23 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           const trackData = {
             ...track,
             fileData: reader.result
+      const request = indexedDB.open(DB_NAME, 1);
+      
+      request.onsuccess = (event: Event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = db.transaction([STORE_TRACKS], 'readwrite');
+        const store = transaction.objectStore(STORE_TRACKS);
+        
+        // Convert File to base64 if exists
+        if (track.file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const trackData = {
+              ...track,
+              fileData: reader.result
+            };
+            delete trackData.file;
+            store.put(trackData);
           };
           delete trackData.file;
           store.put(trackData);
@@ -135,18 +159,24 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     if (typeof window === 'undefined' || !dbRef.current) return;
     
     return new Promise((resolve, reject) => {
-      const db = dbRef.current!;
-      const transaction = db.transaction(['tracks'], 'readonly');
-      const store = transaction.objectStore('tracks');
-      const getAll = store.getAll();
+      const request = indexedDB.open(DB_NAME, 1);
       
-      getAll.onsuccess = () => {
-        const loadedTracks = getAll.result.map((t: any) => ({
-          ...t,
-          url: t.fileData
-        }));
-        setTracks(loadedTracks);
-        resolve(loadedTracks);
+      request.onsuccess = (event: Event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = db.transaction([STORE_TRACKS], 'readonly');
+        const store = transaction.objectStore(STORE_TRACKS);
+        const getAll = store.getAll();
+        
+        getAll.onsuccess = () => {
+          const loadedTracks = getAll.result.map((t: any) => ({
+            ...t,
+            url: t.fileData
+          }));
+          setTracks(loadedTracks);
+          resolve(loadedTracks);
+        };
+        
+        getAll.onerror = () => reject(getAll.error);
       };
       
       getAll.onerror = () => reject(getAll.error);
@@ -155,9 +185,19 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
   const loadNotifications = () => {
     // Load from localStorage or generate sample notifications
-    const stored = localStorage.getItem('jarvis-notifications');
+    const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
     if (stored) {
-      setNotifications(JSON.parse(stored));
+      try {
+        const parsedNotifications = JSON.parse(stored) as Notification[];
+        const notificationsWithDates = parsedNotifications.map((n) => ({
+          ...n,
+          timestamp: new Date(n.timestamp),
+        }));
+        setNotifications(notificationsWithDates);
+      } catch (error) {
+        console.error('Failed to parse notifications from localStorage', error);
+        localStorage.removeItem('jarvis-notifications');
+      }
     } else {
       const sampleNotifications: Notification[] = [
         {
@@ -173,14 +213,14 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   };
 
   const saveNotifications = (notifs: Notification[]) => {
-    localStorage.setItem('jarvis-notifications', JSON.stringify(notifs));
+    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifs));
   };
 
   const handleSend = () => {
     if (!input.trim()) return;
 
     const newMessage: JarvisMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       text: input,
       sender: 'user',
       timestamp: new Date()
@@ -193,7 +233,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     setIsTyping(true);
     setTimeout(() => {
       const response: JarvisMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         text: commandMode 
           ? `Command executed: ${input}`
           : `Processing your request: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}"`,
@@ -215,7 +255,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
       // Parse metadata (simplified - in production would use music-metadata library)
       const track: Track = {
-        id: Date.now().toString() + i,
+        id: crypto.randomUUID(),
         title: file.name.replace(/\.[^/.]+$/, ''),
         artist: 'Unknown Artist',
         album: 'Unknown Album',
@@ -286,6 +326,11 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     setTouchEnd(null);
   };
 
+  const handleCloseOverlay = () => {
+    setIsOpen(false);
+    setIsMinimized(true);
+  };
+
   return (
     <>
       {/* Floating J Launcher */}
@@ -313,8 +358,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
-              setIsOpen(false);
-              setIsMinimized(true);
+              handleCloseOverlay();
             }
           }}
         >
@@ -337,20 +381,14 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Minimize"
                 >
                   <span className="text-xl">−</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Close"
                 >
@@ -468,10 +506,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-white font-medium">{exec.name}</p>
-                            <p className="text-gray-400 text-sm">{exec.title}</p>
+                            <p className="text-gray-400 text-sm">{exec.role}</p>
                           </div>
                           <div className={`w-3 h-3 rounded-full ${
-                            exec.status === 'active' ? 'bg-green-500' : 'bg-gray-600'
+                            exec.status === ConnectionStatus.ACTIVE ? 'bg-green-500' : 'bg-gray-600'
                           }`}></div>
                         </div>
                       </div>
@@ -561,7 +599,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                           onClick={togglePlayPause}
                           className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
                         >
-                          {isPlaying ? '⏸' : '▶'}
+                          {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                         </button>
                       </div>
                     </div>

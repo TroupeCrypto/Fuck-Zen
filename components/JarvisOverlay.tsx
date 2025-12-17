@@ -155,13 +155,31 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     // Load from localStorage or generate sample notifications
     const stored = localStorage.getItem('jarvis-notifications');
     if (stored) {
-      const parsed = JSON.parse(stored);
-      // Convert ISO strings back to Date objects
-      const notificationsWithDates = parsed.map((n: any) => ({
-        ...n,
-        timestamp: new Date(n.timestamp)
-      }));
-      setNotifications(notificationsWithDates);
+      try {
+        const parsed = JSON.parse(stored);
+        // Convert ISO strings back to Date objects with validation
+        const notificationsWithDates: Notification[] = parsed.map((n: {
+          id: string;
+          title: string;
+          message: string;
+          timestamp: string;
+          read: boolean;
+        }) => ({
+          ...n,
+          timestamp: new Date(n.timestamp)
+        }));
+        
+        // Validate that timestamps are valid dates
+        const validNotifications = notificationsWithDates.filter(n => 
+          !isNaN(n.timestamp.getTime())
+        );
+        
+        setNotifications(validNotifications);
+      } catch (error) {
+        console.error('Failed to load notifications from localStorage:', error);
+        // Fall back to empty array on error
+        setNotifications([]);
+      }
     } else {
       const sampleNotifications: Notification[] = [
         {
@@ -177,12 +195,16 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   };
 
   const saveNotifications = (notifs: Notification[]) => {
-    // Convert Date objects to ISO strings for storage
-    const notificationsForStorage = notifs.map(n => ({
-      ...n,
-      timestamp: n.timestamp.toISOString()
-    }));
-    localStorage.setItem('jarvis-notifications', JSON.stringify(notificationsForStorage));
+    try {
+      // Convert Date objects to ISO strings for storage
+      const notificationsForStorage = notifs.map(n => ({
+        ...n,
+        timestamp: n.timestamp.toISOString()
+      }));
+      localStorage.setItem('jarvis-notifications', JSON.stringify(notificationsForStorage));
+    } catch (error) {
+      console.error('Failed to save notifications to localStorage:', error);
+    }
   };
 
   const handleSend = () => {

@@ -17,6 +17,7 @@ import ExecutiveDetail from '../components/ExecutiveDetail';
 import StrategyMap from '../components/StrategyMap';
 import KTDConsole from '../components/KTDConsole';
 import SiteMenu from '../components/SiteMenu';
+import JarvisOverlay from '../components/JarvisOverlay';
 
 export default function HomePage() {
   const [executives, setExecutives] = useState<Executive[]>(INITIAL_ROSTER);
@@ -373,6 +374,9 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      {/* Jarvis Overlay - Site-wide persistent */}
+      <JarvisOverlay executives={executives} />
     </div>
   );
 }

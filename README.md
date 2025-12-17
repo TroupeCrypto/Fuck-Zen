@@ -8,6 +8,27 @@ This is the Tier 1 Executive Roundtable and Digital Headquarters for Troupe Inc.
 
 ## Features
 
+### 🤖 Jarvis Chat Overlay (NEW!)
+- **Site-Wide AI Assistant**: Persistent chat interface accessible from any page
+- **4-Tab Modal Interface**:
+  - **Chat**: Real-time messaging with command mode (type `/` for system commands)
+  - **Scopes**: Live system visibility showing connected executives
+  - **Notifications**: Centralized alerts with badge counter
+  - **Music**: Local file upload player with playlist and metadata (artwork, artist, album)
+- **IndexedDB Persistence**: All music and data persists across sessions
+- **Mobile-Friendly**: Bottom-sheet with swipe-to-close gesture
+- **Minimize-to-J Launcher**: Floating button with notification badge
+
+See [docs/JARVIS_OVERLAY.md](docs/JARVIS_OVERLAY.md) for complete documentation.
+
+### ⚙️ Jarvis Prompt Inbox Automation (NEW!)
+- **Automated Issue-to-PR Pipeline**: Label any issue with `jarvis:do` to automatically generate a PR
+- **Scheduled Checks**: Runs every 15 minutes to process new requests
+- **Smart Tracking**: Comments PR link back to issue and prevents duplicate processing
+- **Secure & Reliable**: Uses GitHub API with retry logic and proper error handling
+
+See [docs/JARVIS_PROMPT_INBOX.md](docs/JARVIS_PROMPT_INBOX.md) for complete documentation.
+
 ### 🎯 Command Line Interface with Chat
 - **Dual Mode Operation**: Toggle between Command Mode (system operations) and Chat Mode (interactive messaging)
 - **Multi-Party Chat**: Send messages to individual executives, entire departments, or broadcast to all

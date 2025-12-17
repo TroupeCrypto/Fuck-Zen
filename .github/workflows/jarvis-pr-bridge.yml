@@ -38,25 +38,72 @@ jobs:
             echo "❌ ERROR: JARVIS_APP_ID secret is not set"
             exit 1
           fi
-          
-          if [ -z "$INSTALLATION_ID" ]; then
-            echo "❌ ERROR: JARVIS_INSTALLATION_ID secret is not set"
-            exit 1
-          fi
-          
-          if [ -z "$PRIVATE_KEY" ]; then
-            echo "❌ ERROR: JARVIS_APP_PRIVATE_KEY secret is not set"
-            exit 1
-          fi
-          
-          echo "✅ All required secrets are present"
-      
-      - name: Run Jarvis PR Bridge
-        env:
-          JARVIS_APP_ID: ${{ secrets.JARVIS_APP_ID }}
-          JARVIS_INSTALLATION_ID: ${{ secrets.JARVIS_INSTALLATION_ID }}
-          JARVIS_APP_PRIVATE_KEY: ${{ secrets.JARVIS_APP_PRIVATE_KEY }}
+name: Jarvis Bridge
+
+on:
+  # Primary: event-driven (fires immediately)
+  issues:
+    types: [opened, edited, reopened, labeled]
+  issue_comment:
+    types: [created]
+
+  # Fallbacks
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: jarvis-bridge
+  cancel-in-progress: false
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Heartbeat (never skips)
         run: |
-          echo "🚀 Running Jarvis PR Bridge..."
-          echo "📋 Plan file: ${{ inputs.plan_path }}"
-          node tools/jarvis/pr-bridge.js "${{ inputs.plan_path }}"
+          echo "JARVIS_BRIDGE_HEARTBEAT"
+          echo "event=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+          echo "repo=${{ github.repository }}"
+          date -u
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps (if present)
+        run: |
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json found, continuing."
+          fi
+
+      - name: Run Jarvis Bridge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          if [ -f ./scripts/jarvis-bridge.js ]; then
+            node ./scripts/jarvis-bridge.js
+          elif [ -f ./jarvis-bridge.js ]; then
+            node ./jarvis-bridge.js
+          else
+            echo "ERROR: jarvis bridge script not found."
+            exit 1
+          fi

@@ -2,6 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, MessageSquare, Target, Bell, Music, Send, Command } from 'lucide-react';
+import { Executive, ConnectionStatus } from '../types';
+
+// Database and storage constants
+const DB_NAME = 'JarvisDB';
+const STORE_TRACKS = 'tracks';
+const STORE_PLAYLISTS = 'playlists';
+const STORAGE_KEY_NOTIFICATIONS = 'jarvis-notifications';
 
 interface JarvisMessage {
   id: string;
@@ -37,7 +44,7 @@ interface Track {
 }
 
 interface JarvisOverlayProps {
-  executives?: any[];
+  executives?: Executive[];
 }
 
 type TabType = 'chat' | 'scopes' | 'notifications' | 'music';
@@ -60,11 +67,11 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dbRef = useRef<IDBDatabase | null>(null);
 
   // Initialize IndexedDB for music storage
   useEffect(() => {
     initIndexedDB();
-    loadTracksFromDB();
     loadNotifications();
   }, []);
 
@@ -85,31 +92,52 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   const initIndexedDB = () => {
     if (typeof window === 'undefined') return;
     
-    const request = indexedDB.open('JarvisDB', 1);
+    const request = indexedDB.open(DB_NAME, 1);
     
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = (event.target as IDBOpenDBRequest).result;
       
-      if (!db.objectStoreNames.contains('tracks')) {
-        db.createObjectStore('tracks', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_TRACKS)) {
+        db.createObjectStore(STORE_TRACKS, { keyPath: 'id' });
       }
       
-      if (!db.objectStoreNames.contains('playlists')) {
-        db.createObjectStore('playlists', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(STORE_PLAYLISTS)) {
+        db.createObjectStore(STORE_PLAYLISTS, { keyPath: 'id' });
       }
+    };
+    
+    request.onsuccess = (event: Event) => {
+      dbRef.current = (event.target as IDBOpenDBRequest).result;
+      // Load tracks after database is ready
+      loadTracksFromDB();
+    };
+    
+    request.onerror = (event: Event) => {
+      console.error('IndexedDB initialization error:', (event.target as IDBOpenDBRequest).error);
     };
   };
 
   const saveTrackToDB = async (track: Track) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !dbRef.current) return;
     
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
+      const db = dbRef.current!;
+      const transaction = db.transaction(['tracks'], 'readwrite');
+      const store = transaction.objectStore('tracks');
+      
+      // Convert File to base64 if exists
+      if (track.file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const trackData = {
+            ...track,
+            fileData: reader.result
+      const request = indexedDB.open(DB_NAME, 1);
       
       request.onsuccess = (event: Event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readwrite');
-        const store = transaction.objectStore('tracks');
+        const transaction = db.transaction([STORE_TRACKS], 'readwrite');
+        const store = transaction.objectStore(STORE_TRACKS);
         
         // Convert File to base64 if exists
         if (track.file) {
@@ -122,27 +150,29 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
             delete trackData.file;
             store.put(trackData);
           };
-          reader.readAsDataURL(track.file);
-        } else {
-          store.put(track);
-        }
-        
-        transaction.oncomplete = () => resolve(true);
-        transaction.onerror = () => reject(transaction.error);
-      };
+          delete trackData.file;
+          store.put(trackData);
+        };
+        reader.readAsDataURL(track.file);
+      } else {
+        store.put(track);
+      }
+      
+      transaction.oncomplete = () => resolve(true);
+      transaction.onerror = () => reject(transaction.error);
     });
   };
 
   const loadTracksFromDB = async () => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !dbRef.current) return;
     
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('JarvisDB', 1);
+      const request = indexedDB.open(DB_NAME, 1);
       
       request.onsuccess = (event: Event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        const transaction = db.transaction(['tracks'], 'readonly');
-        const store = transaction.objectStore('tracks');
+        const transaction = db.transaction([STORE_TRACKS], 'readonly');
+        const store = transaction.objectStore(STORE_TRACKS);
         const getAll = store.getAll();
         
         getAll.onsuccess = () => {
@@ -156,31 +186,35 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
         
         getAll.onerror = () => reject(getAll.error);
       };
+      
+      getAll.onerror = () => reject(getAll.error);
     });
   };
 
+  const getDefaultNotifications = (): Notification[] => [
+    {
+      id: '1',
+      title: 'System Update',
+      message: 'Jarvis overlay initialized successfully',
+      timestamp: new Date(),
+      read: false
+    }
+  ];
+
   const loadNotifications = () => {
     // Load from localStorage or generate sample notifications
-    const stored = localStorage.getItem('jarvis-notifications');
+    const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
     if (stored) {
       try {
-        const parsed: StoredNotification[] = JSON.parse(stored);
-        // Convert ISO strings back to Date objects with validation
-        const notificationsWithDates: Notification[] = parsed.map((n) => ({
+        const parsedNotifications = JSON.parse(stored) as Notification[];
+        const notificationsWithDates = parsedNotifications.map((n) => ({
           ...n,
-          timestamp: new Date(n.timestamp)
+          timestamp: new Date(n.timestamp),
         }));
-        
-        // Validate that timestamps are valid dates
-        const validNotifications = notificationsWithDates.filter(n => 
-          !Number.isNaN(n.timestamp.getTime())
-        );
-        
-        setNotifications(validNotifications);
+        setNotifications(notificationsWithDates);
       } catch (error) {
-        console.error('Failed to load notifications from localStorage:', error);
-        // Fall back to empty array on error
-        setNotifications([]);
+        console.error('Failed to parse notifications from localStorage', error);
+        localStorage.removeItem('jarvis-notifications');
       }
     } else {
       const sampleNotifications: Notification[] = [
@@ -191,29 +225,41 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           timestamp: new Date(),
           read: false
         }
-      ];
-      setNotifications(sampleNotifications);
+        
+        // Convert timestamp strings back to Date objects and validate
+        const notifications = parsed.map(notif => {
+          const timestamp = new Date(notif.timestamp);
+          // Check if timestamp is valid
+          if (isNaN(timestamp.getTime())) {
+            throw new Error('Invalid timestamp in notification');
+          }
+          return {
+            ...notif,
+            timestamp
+          };
+        });
+        
+        setNotifications(notifications);
+      } catch (error) {
+        console.error('Failed to load notifications from localStorage:', error);
+        // Clear corrupted data and use sample notifications
+        localStorage.removeItem('jarvis-notifications');
+        setNotifications(getDefaultNotifications());
+      }
+    } else {
+      setNotifications(getDefaultNotifications());
     }
   };
 
   const saveNotifications = (notifs: Notification[]) => {
-    try {
-      // Convert Date objects to ISO strings for storage
-      const notificationsForStorage: StoredNotification[] = notifs.map(n => ({
-        ...n,
-        timestamp: n.timestamp.toISOString()
-      }));
-      localStorage.setItem('jarvis-notifications', JSON.stringify(notificationsForStorage));
-    } catch (error) {
-      console.error('Failed to save notifications to localStorage:', error);
-    }
+    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifs));
   };
 
   const handleSend = () => {
     if (!input.trim()) return;
 
     const newMessage: JarvisMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       text: input,
       sender: 'user',
       timestamp: new Date()
@@ -226,7 +272,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     setIsTyping(true);
     setTimeout(() => {
       const response: JarvisMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         text: commandMode 
           ? `Command executed: ${input}`
           : `Processing your request: "${input.substring(0, 50)}${input.length > 50 ? '...' : ''}"`,
@@ -248,7 +294,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
 
       // Parse metadata (simplified - in production would use music-metadata library)
       const track: Track = {
-        id: Date.now().toString() + i,
+        id: crypto.randomUUID(),
         title: file.name.replace(/\.[^/.]+$/, ''),
         artist: 'Unknown Artist',
         album: 'Unknown Album',
@@ -319,6 +365,11 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     setTouchEnd(null);
   };
 
+  const handleCloseOverlay = () => {
+    setIsOpen(false);
+    setIsMinimized(true);
+  };
+
   return (
     <>
       {/* Floating J Launcher */}
@@ -346,13 +397,15 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
-              setIsOpen(false);
-              setIsMinimized(true);
+              handleCloseOverlay();
             }
           }}
         >
           <div 
             className="bg-gray-900 w-full md:w-[600px] md:max-h-[700px] h-[80vh] md:h-auto rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col border border-gray-700"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jarvis-header"
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
@@ -364,26 +417,20 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                   J
                 </div>
                 <div>
-                  <h2 className="text-white font-semibold">Jarvis</h2>
+                  <h2 id="jarvis-header" className="text-white font-semibold">Jarvis</h2>
                   <p className="text-gray-400 text-xs">AI Assistant</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Minimize"
                 >
                   <span className="text-xl">−</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setIsMinimized(true);
-                  }}
+                  onClick={handleCloseOverlay}
                   className="text-gray-400 hover:text-white transition-colors p-2"
                   aria-label="Close"
                 >
@@ -501,10 +548,10 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-white font-medium">{exec.name}</p>
-                            <p className="text-gray-400 text-sm">{exec.title}</p>
+                            <p className="text-gray-400 text-sm">{exec.role}</p>
                           </div>
                           <div className={`w-3 h-3 rounded-full ${
-                            exec.status === 'active' ? 'bg-green-500' : 'bg-gray-600'
+                            exec.status === ConnectionStatus.ACTIVE ? 'bg-green-500' : 'bg-gray-600'
                           }`}></div>
                         </div>
                       </div>
@@ -594,7 +641,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                           onClick={togglePlayPause}
                           className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors"
                         >
-                          {isPlaying ? '⏸' : '▶'}
+                          {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                         </button>
                       </div>
                     </div>

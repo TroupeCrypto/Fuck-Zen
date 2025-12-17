@@ -162,7 +162,17 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     // Load from localStorage or generate sample notifications
     const stored = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
     if (stored) {
-      setNotifications(JSON.parse(stored));
+      try {
+        const parsedNotifications = JSON.parse(stored) as Notification[];
+        const notificationsWithDates = parsedNotifications.map((n) => ({
+          ...n,
+          timestamp: new Date(n.timestamp),
+        }));
+        setNotifications(notificationsWithDates);
+      } catch (error) {
+        console.error('Failed to parse notifications from localStorage', error);
+        localStorage.removeItem('jarvis-notifications');
+      }
     } else {
       const sampleNotifications: Notification[] = [
         {

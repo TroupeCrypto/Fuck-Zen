@@ -112,13 +112,21 @@ jobs:
                 
                 // Use GitHub API to commit the plan file (safer than shell commands)
                 const fileContent = Buffer.from(JSON.stringify(plan, null, 2)).toString('base64');
+                
+                // Get the default branch
+                const repoData = await github.rest.repos.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo
+                });
+                const defaultBranch = repoData.data.default_branch;
+                
                 await github.rest.repos.createOrUpdateFileContents({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   path: planPath,
                   message: `Add Jarvis plan for issue #${issue.number}`,
                   content: fileContent,
-                  branch: 'main'
+                  branch: defaultBranch
                 });
                 
                 console.log(`✅ Committed plan via GitHub API`);

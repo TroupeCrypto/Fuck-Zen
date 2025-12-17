@@ -445,8 +445,8 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                         <div className="bg-gray-800 text-gray-200 rounded-2xl px-4 py-2">
                           <div className="flex space-x-1">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:100ms]"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:200ms]"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce-delay-100"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce-delay-200"></div>
                           </div>
                         </div>
                       </div>
@@ -574,7 +574,7 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                           className={`rounded-lg p-3 cursor-pointer transition-colors ${
                             currentTrack?.id === track.id
                               ? 'bg-blue-900/50 border border-blue-700'
-                              : 'bg-gray-800 hover:bg-gray-750'
+                              : 'bg-gray-800 hover:bg-gray-700'
                           }`}
                         >
                           <div className="flex items-center space-x-3">

@@ -79,8 +79,8 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     
     const request = indexedDB.open('JarvisDB', 1);
     
-    request.onupgradeneeded = (event: any) => {
-      const db = event.target.result;
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+      const db = (event.target as IDBOpenDBRequest).result;
       
       if (!db.objectStoreNames.contains('tracks')) {
         db.createObjectStore('tracks', { keyPath: 'id' });
@@ -98,8 +98,8 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open('JarvisDB', 1);
       
-      request.onsuccess = (event: any) => {
-        const db = event.target.result;
+      request.onsuccess = (event: Event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
         const transaction = db.transaction(['tracks'], 'readwrite');
         const store = transaction.objectStore('tracks');
         
@@ -131,8 +131,8 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open('JarvisDB', 1);
       
-      request.onsuccess = (event: any) => {
-        const db = event.target.result;
+      request.onsuccess = (event: Event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
         const transaction = db.transaction(['tracks'], 'readonly');
         const store = transaction.objectStore('tracks');
         const getAll = store.getAll();
@@ -284,8 +284,6 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     setTouchEnd(null);
   };
 
-  const unreadNotificationCount = notifications.filter(n => !n.read).length;
-
   return (
     <>
       {/* Floating J Launcher */}
@@ -299,9 +297,9 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
           aria-label="Open Jarvis"
         >
           J
-          {unreadNotificationCount > 0 && (
+          {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {unreadNotificationCount}
+              {unreadCount}
             </span>
           )}
         </button>
@@ -447,8 +445,8 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
                         <div className="bg-gray-800 text-gray-200 rounded-2xl px-4 py-2">
                           <div className="flex space-x-1">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:100ms]"></div>
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:200ms]"></div>
                           </div>
                         </div>
                       </div>

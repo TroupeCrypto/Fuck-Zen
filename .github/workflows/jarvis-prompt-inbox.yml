@@ -110,13 +110,18 @@ jobs:
                 fs.writeFileSync(planPath, JSON.stringify(plan, null, 2));
                 console.log(`✅ Created plan: ${planPath}`);
                 
-                // Commit the plan file
-                const { execSync } = require('child_process');
-                execSync(`git config user.name "github-actions[bot]"`);
-                execSync(`git config user.email "github-actions[bot]@users.noreply.github.com"`);
-                execSync(`git add "${planPath}"`);
-                execSync(`git commit -m "Add Jarvis plan for issue #${issue.number}"`);
-                execSync(`git push`);
+                // Use GitHub API to commit the plan file (safer than shell commands)
+                const fileContent = Buffer.from(JSON.stringify(plan, null, 2)).toString('base64');
+                await github.rest.repos.createOrUpdateFileContents({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: planPath,
+                  message: `Add Jarvis plan for issue #${issue.number}`,
+                  content: fileContent,
+                  branch: 'main'
+                });
+                
+                console.log(`✅ Committed plan via GitHub API`);
                 
                 // Trigger the PR bridge workflow
                 await github.rest.actions.createWorkflowDispatch({
@@ -131,22 +136,35 @@ jobs:
                 
                 console.log(`✅ Triggered PR bridge workflow`);
                 
-                // Wait a bit for the workflow to create the PR
-                await new Promise(resolve => setTimeout(resolve, 30000));
+                // Poll for PR creation with retry logic (up to 2 minutes)
+                let prFound = false;
+                let matchingPR = null;
+                const maxAttempts = 8; // 8 attempts with 15 seconds each = 2 minutes
+                const pollInterval = 15000; // 15 seconds
                 
-                // Find the created PR
-                const prs = await github.rest.pulls.list({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  state: 'open',
-                  sort: 'created',
-                  direction: 'desc',
-                  per_page: 10
-                });
-                
-                const matchingPR = prs.data.find(pr => 
-                  pr.head.ref.includes(`issue-${issue.number}`)
-                );
+                for (let attempt = 0; attempt < maxAttempts && !prFound; attempt++) {
+                  await new Promise(resolve => setTimeout(resolve, pollInterval));
+                  
+                  console.log(`Checking for PR (attempt ${attempt + 1}/${maxAttempts})...`);
+                  
+                  const prs = await github.rest.pulls.list({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    sort: 'created',
+                    direction: 'desc',
+                    per_page: 10
+                  });
+                  
+                  matchingPR = prs.data.find(pr => 
+                    pr.head.ref.includes(`issue-${issue.number}`)
+                  );
+                  
+                  if (matchingPR) {
+                    prFound = true;
+                    console.log(`✅ Found PR #${matchingPR.number}`);
+                  }
+                }
                 
                 if (matchingPR) {
                   // Comment on the issue with the PR link

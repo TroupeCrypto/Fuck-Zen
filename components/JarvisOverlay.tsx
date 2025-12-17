@@ -155,7 +155,13 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
     // Load from localStorage or generate sample notifications
     const stored = localStorage.getItem('jarvis-notifications');
     if (stored) {
-      setNotifications(JSON.parse(stored));
+      const parsed = JSON.parse(stored);
+      // Convert ISO strings back to Date objects
+      const notificationsWithDates = parsed.map((n: any) => ({
+        ...n,
+        timestamp: new Date(n.timestamp)
+      }));
+      setNotifications(notificationsWithDates);
     } else {
       const sampleNotifications: Notification[] = [
         {
@@ -171,7 +177,12 @@ const JarvisOverlay: React.FC<JarvisOverlayProps> = ({ executives = [] }) => {
   };
 
   const saveNotifications = (notifs: Notification[]) => {
-    localStorage.setItem('jarvis-notifications', JSON.stringify(notifs));
+    // Convert Date objects to ISO strings for storage
+    const notificationsForStorage = notifs.map(n => ({
+      ...n,
+      timestamp: n.timestamp.toISOString()
+    }));
+    localStorage.setItem('jarvis-notifications', JSON.stringify(notificationsForStorage));
   };
 
   const handleSend = () => {

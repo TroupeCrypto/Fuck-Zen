@@ -17,6 +17,6 @@ export function forbidden(message = "Forbidden") {
   return json(403, { ok: false, error: message });
 }
 
-export function serverError(message = "Internal Server Error") {
-  return json(500, { ok: false, error: message });
+export function serverError(message = "Internal Server Error", extra = {}) {
+  return json(500, { ok: false, error: message, ...extra });
 }

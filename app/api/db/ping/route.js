@@ -3,51 +3,45 @@ export const runtime = "nodejs";
 import { json, serverError } from "../../_utils/respond.js";
 import { queryOne } from "../../../../lib/db/query.js";
 
-function redactDbUrlForLog(raw) {
+/**
+ * Parse a database URL and return non-sensitive connection details for diagnostics.
+ * @param {string} raw
+ * @returns {{protocol?: string, host?: string, port?: string, database?: string, hasQuery?: string[], invalid?: boolean}} Object with connection details; hasQuery lists query parameter keys.
+ */
+function inspectDbUrl(raw) {
   try {
     const u = new URL(raw);
+    const pathname = u.pathname || "";
     return {
       protocol: u.protocol,
-      username: u.username || null,
-      host: u.hostname || null,
-      port: u.port || null,
-      database: (u.pathname || "").replace("/", "") || null,
-      hasSslmode: u.searchParams.has("sslmode"),
-      sslmode: u.searchParams.get("sslmode") || null,
+      host: u.hostname,
+      port: u.port,
+      database: pathname.replace(/^\//, ""),
+      hasQuery: [...u.searchParams.keys()],
     };
-  } catch {
-    // In case someone pasted a non-URL format, return minimal safe hint
-    return { protocol: null, username: null, host: null, port: null, database: null, hasSslmode: false, sslmode: null };
+  } catch (_) {
+    return { invalid: true };
   }
 }
 
 export async function GET() {
   try {
     const raw = process.env.DATABASE_URL || "";
-    const hasDbUrl = !!raw && !!String(raw).trim();
-
-    const parsed = hasDbUrl ? redactDbUrlForLog(raw) : null;
+    const inspected = inspectDbUrl(raw);
 
     const row = await queryOne("select now() as now");
 
     return json(200, {
       ok: true,
       now: row?.now || null,
-      hasDbUrl,
-      parsed,
+      db: inspected,
+      sslEnforcedByPool: process.env.PGSSL !== "disable",
     });
   } catch (e) {
-    const raw = process.env.DATABASE_URL || "";
-    const hasDbUrl = !!raw && !!String(raw).trim();
-    const parsed = hasDbUrl ? redactDbUrlForLog(raw) : null;
-
-    const name = e?.name ? String(e.name) : "Error";
-    const code = e?.code ? String(e.code) : null;
-    const message = e?.message ? String(e.message) : "Unknown error";
-
-    return serverError(`DB ping failed: ${name}${code ? ` (${code})` : ""}: ${message}`, {
-      hasDbUrl,
-      parsed,
+    const code = e?.code ? `${e.code} ` : "";
+    const message = e?.message || e?.toString?.() || "Unknown error";
+    return serverError(`DB ping failed: ${code}${message}`, {
+      sslEnforcedByPool: process.env.PGSSL !== "disable",
     });
   }
 }

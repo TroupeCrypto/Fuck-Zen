@@ -44,6 +44,10 @@ function normalizeDisplayName(raw) {
   return val.length ? val : null;
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 async function ensureUserRole(pool, userId) {
   try {
     const { rows: tables } = await pool.query(
@@ -117,6 +121,9 @@ export async function POST(req) {
   if (!email) {
     return jsonResponse(400, { ok: false, error: "Email is required." }, cors);
   }
+  if (!isValidEmail(email)) {
+    return jsonResponse(400, { ok: false, error: "Invalid email format." }, cors);
+  }
   if (password.length < 8) {
     return jsonResponse(400, { ok: false, error: "Password must be at least 8 characters." }, cors);
   }
@@ -156,6 +163,7 @@ export async function POST(req) {
     if (e?.code === "23505") {
       return jsonResponse(409, { ok: false, error: "Email already registered" }, cors);
     }
-    return jsonResponse(500, { ok: false, error: "Server error.", detail: e?.message || String(e) }, cors);
+    const detail = process.env.NODE_ENV === "production" ? undefined : e?.message || String(e);
+    return jsonResponse(500, { ok: false, error: "Server error.", ...(detail ? { detail } : {}) }, cors);
   }
 }

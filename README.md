@@ -131,6 +131,13 @@ npm start
 3. Select executives and/or departments
 4. Type your message and send
 
+### API: Register User
+```bash
+curl -X POST https://your-deployment.example.com/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"supersecure","display_name":"New User"}'
+```
+
 ## Development
 
 ```bash

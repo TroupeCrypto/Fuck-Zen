@@ -4,55 +4,53 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * DELUXE AI WAR ROOM (Persistent Conversations)
- * - Auth-aware (Bearer token)
- * - Multi-agent “room” support without new backend requirements:
- *   Each agent has its own persistent DB conversation; UI merges them into a single view.
- * - Conversation creation/listing uses:
- *     GET/POST  /api/ai/conversations
- * - Message send/list uses:
- *     GET/POST  /api/ai/conversations/:id/messages
- *
- * IMPORTANT:
- * - This UI stores your Bearer token locally (localStorage) for convenience.
- * - It also stores "agent room mappings" locally (localStorage) so your multi-agent room persists.
+ * AI WAR ROOM (DELUXE + DEBUG-HARDENED)
+ * - Persistent multi-agent rooms
+ * - Auth via Bearer token
+ * - Shows REAL errors (status + body)
+ * - Request timeouts to prevent “buffer then nothing”
  */
 
 const LS = {
   token: "fz_auth_token",
-  room: "fz_ai_room_v1", // agent->conversationId mapping + activeRoomName
+  room: "fz_ai_room_v1",
 };
 
 const AGENTS = [
   {
     id: "jarvis",
     name: "Jarvis",
-    tagline: "Executive operator: ruthless clarity, build-first, delivery obsessed.",
-    system: `[[SYSTEM]] You are Jarvis — Ziggy’s executive AI operator for Troupe Inc. You speak with calm authority, prioritize execution, provide step-by-step plans only when asked, and always return actionable outputs.`,
+    tagline: "Executive operator: clarity, execution, delivery.",
+    system:
+      "[[SYSTEM]] You are Jarvis — Ziggy’s executive AI operator for Troupe Inc. You speak with calm authority, prioritize execution, and return actionable outputs.",
   },
   {
     id: "nova",
     name: "Nova",
-    tagline: "Revenue hunter: crypto/NFT/collectibles arbitrage, asset acquisition, market scanning.",
-    system: `[[SYSTEM]] You are Nova — revenue acquisition specialist for Troupe Inc. You prioritize legal opportunities, asset acquisition, and market intelligence. Be direct and ROI-driven.`,
+    tagline: "Revenue hunter: assets, arbitrage, opportunities.",
+    system:
+      "[[SYSTEM]] You are Nova — revenue acquisition specialist for Troupe Inc. Prioritize legal opportunities, asset acquisition, and ROI.",
   },
   {
     id: "zen",
     name: "Zen",
-    tagline: "Design + product: vibe alignment, UX clarity, brand coherence.",
-    system: `[[SYSTEM]] You are Zen — product + design lead for Troupe Inc. You propose UI/UX patterns, flows, and aesthetics aligned to a psychedelic futurist vibe. Keep it shippable.`,
+    tagline: "Product + design: UX, flow, vibe alignment.",
+    system:
+      "[[SYSTEM]] You are Zen — product + design lead for Troupe Inc. Propose shippable UI/UX aligned to a psychedelic futurist vibe.",
   },
   {
     id: "gemini",
     name: "Gemini",
-    tagline: "Big-context analyst: synthesis, deep research patterns, structured summaries.",
-    system: `[[SYSTEM]] You are Gemini — large-context analyst. You synthesize, structure, and clarify complex threads. Prefer bulletproof reasoning and crisp summaries.`,
+    tagline: "Big-context analyst: synthesis and structure.",
+    system:
+      "[[SYSTEM]] You are Gemini — large-context analyst. Synthesize and structure complex threads with crisp summaries.",
   },
   {
     id: "bb",
     name: "BB",
-    tagline: "Systems architect: enterprise-grade, secure, scalable, no placeholders.",
-    system: `[[SYSTEM]] You are BB — enterprise systems architect. You enforce production readiness, security best practices, and deterministic implementations. No placeholders, no vague steps.`,
+    tagline: "Systems architect: enterprise-grade, no placeholders.",
+    system:
+      "[[SYSTEM]] You are BB — enterprise systems architect. Enforce production readiness, security, and deterministic implementations.",
   },
 ];
 
@@ -76,45 +74,67 @@ function fmtTime(iso) {
 }
 
 function redactToken(t) {
-  if (!t) return "";
-  if (t.length < 16) return t;
-  return `${t.slice(0, 8)}…${t.slice(-6)}`;
+  const s = String(t || "");
+  if (!s) return "";
+  if (s.length < 18) return s;
+  return `${s.slice(0, 10)}…${s.slice(-8)}`;
 }
 
-async function apiFetch(path, { token, method = "GET", body } = {}) {
+async function fetchJson(url, { method = "GET", token, body, timeoutMs = 15000 } = {}) {
   const headers = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
-  const res = await fetch(path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const text = await res.text();
+  let res;
+  let raw = "";
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    raw = await res.text();
+  } catch (e) {
+    clearTimeout(timer);
+    const msg =
+      e?.name === "AbortError"
+        ? `Request timed out after ${timeoutMs}ms`
+        : `Network error: ${e?.message || String(e)}`;
+    const err = new Error(msg);
+    err.meta = { url, method };
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+
   let data = null;
   try {
-    data = text ? JSON.parse(text) : null;
+    data = raw ? JSON.parse(raw) : null;
   } catch {
-    data = { ok: false, error: "Non-JSON response", raw: text };
+    data = { ok: false, error: "Non-JSON response", raw };
   }
 
   if (!res.ok) {
     const err = new Error(data?.error || data?.message || `HTTP ${res.status}`);
     err.status = res.status;
     err.data = data;
+    err.raw = raw;
+    err.meta = { url, method };
     throw err;
   }
-  return data;
+
+  return { status: res.status, data, raw };
 }
 
 function mergeAgentThreads(agentThreads) {
-  // agentThreads: [{ agentId, messages: [{role, content, created_at}] }]
   const out = [];
   for (const t of agentThreads) {
     for (const m of t.messages || []) {
-      if (typeof m?.content === "string" && m.content.startsWith("[[SYSTEM]]")) continue; // hide priming
+      if (typeof m?.content === "string" && m.content.startsWith("[[SYSTEM]]")) continue;
       out.push({
         agentId: t.agentId,
         role: m.role,
@@ -131,7 +151,7 @@ export default function AiWarRoomPage() {
   const [token, setToken] = useState("");
   const [tokenSaved, setTokenSaved] = useState(false);
 
-  const [loginEmail, setLoginEmail] = useState("");
+  const [loginEmail, setLoginEmail] = useState("ziggy+auth@troupeinc.com");
   const [loginPass, setLoginPass] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
 
@@ -139,23 +159,23 @@ export default function AiWarRoomPage() {
   const [roomName, setRoomName] = useState("War Room");
 
   const [roomMap, setRoomMap] = useState(() => ({})); // { agentId: conversationId }
-  const [conversations, setConversations] = useState([]); // from /api/ai/conversations
+  const [conversations, setConversations] = useState([]);
   const [loadingConvos, setLoadingConvos] = useState(false);
 
   const [activeView, setActiveView] = useState("room"); // "room" | "agent"
   const [activeAgent, setActiveAgent] = useState("jarvis");
 
-  const [threads, setThreads] = useState({}); // { agentId: {loading, messages: []} }
+  const [threads, setThreads] = useState({});
   const [sendText, setSendText] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Single unified status box (prints real details)
   const [statusLine, setStatusLine] = useState("");
+
   const bottomRef = useRef(null);
 
   const selectedAgentsArr = useMemo(() => Array.from(selectedAgents), [selectedAgents]);
-  const selectedAgentObjs = useMemo(
-    () => AGENTS.filter((a) => selectedAgents.has(a.id)),
-    [selectedAgents]
-  );
+  const selectedAgentObjs = useMemo(() => AGENTS.filter((a) => selectedAgents.has(a.id)), [selectedAgents]);
 
   const mergedRoom = useMemo(() => {
     const agentThreads = selectedAgentsArr.map((id) => ({
@@ -165,12 +185,20 @@ export default function AiWarRoomPage() {
     return mergeAgentThreads(agentThreads);
   }, [selectedAgentsArr, threads]);
 
+  const activeAgentObj = useMemo(
+    () => AGENTS.find((a) => a.id === activeAgent) || AGENTS[0],
+    [activeAgent]
+  );
+  const activeThread = threads?.[activeAgent]?.messages || [];
+
   useEffect(() => {
     const t = localStorage.getItem(LS.token) || "";
     if (t) {
       setToken(t);
       setTokenSaved(true);
+      setStatusLine(`Token loaded from device: ${redactToken(t)}`);
     }
+
     const saved = safeJsonParse(localStorage.getItem(LS.room) || "", null);
     if (saved?.roomName) setRoomName(saved.roomName);
     if (saved?.roomMap && typeof saved.roomMap === "object") setRoomMap(saved.roomMap);
@@ -192,29 +220,74 @@ export default function AiWarRoomPage() {
   }, [roomName, roomMap, selectedAgentsArr]);
 
   useEffect(() => {
-    // auto-scroll on message changes
     if (!bottomRef.current) return;
     bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [mergedRoom.length, activeAgent, activeView]);
 
+  function saveTokenLocal(nextToken) {
+    const t = String(nextToken || "").trim();
+    if (!t) return false;
+    localStorage.setItem(LS.token, t);
+    setToken(t);
+    setTokenSaved(true);
+    return true;
+  }
+
   async function handleLogin() {
     setStatusLine("");
+    if (!loginEmail.trim() || !loginPass) {
+      setStatusLine("Login failed: missing email or password.");
+      return;
+    }
+
     setLoginBusy(true);
     try {
-      const data = await apiFetch("/api/auth/login", {
+      const { data } = await fetchJson("/api/auth/login", {
         method: "POST",
         body: { email: loginEmail, password: loginPass },
+        timeoutMs: 15000,
       });
-      if (!data?.token) throw new Error("No token returned");
-      localStorage.setItem(LS.token, data.token);
-      setToken(data.token);
-      setTokenSaved(true);
-      setStatusLine("Logged in. Token saved locally.");
+
+      if (!data?.token) {
+        setStatusLine(`Login failed: response missing token. Raw: ${JSON.stringify(data)}`);
+        return;
+      }
+
+      saveTokenLocal(data.token);
       setLoginPass("");
+      setStatusLine(`Logged in. Token saved locally: ${redactToken(data.token)}`);
     } catch (e) {
-      setStatusLine(`Login failed: ${e?.data?.error || e?.message || String(e)}`);
+      const detail = e?.data ? JSON.stringify(e.data) : e?.raw ? String(e.raw) : "";
+      setStatusLine(
+        `Login failed: ${e?.message || String(e)}${e?.status ? ` (HTTP ${e.status})` : ""}${
+          detail ? ` | ${detail}` : ""
+        }`
+      );
     } finally {
       setLoginBusy(false);
+    }
+  }
+
+  async function testMe() {
+    setStatusLine("");
+    if (!token.trim()) {
+      setStatusLine("Test failed: missing token. Log in or paste token then Save Token.");
+      return;
+    }
+    try {
+      const { data } = await fetchJson("/api/auth/me", {
+        method: "GET",
+        token: token.trim(),
+        timeoutMs: 15000,
+      });
+      setStatusLine(`ME OK: ${JSON.stringify(data)}`);
+    } catch (e) {
+      const detail = e?.data ? JSON.stringify(e.data) : e?.raw ? String(e.raw) : "";
+      setStatusLine(
+        `ME failed: ${e?.message || String(e)}${e?.status ? ` (HTTP ${e.status})` : ""}${
+          detail ? ` | ${detail}` : ""
+        }`
+      );
     }
   }
 
@@ -223,56 +296,65 @@ export default function AiWarRoomPage() {
       setStatusLine("Token is empty.");
       return;
     }
-    localStorage.setItem(LS.token, token.trim());
-    setTokenSaved(true);
+    saveTokenLocal(token.trim());
     setStatusLine(`Token saved: ${redactToken(token.trim())}`);
   }
 
   async function refreshConversations() {
-    if (!token) {
+    setStatusLine("");
+    if (!token.trim()) {
       setStatusLine("Missing token. Log in or paste your Bearer token first.");
       return;
     }
     setLoadingConvos(true);
-    setStatusLine("");
     try {
-      const data = await apiFetch("/api/ai/conversations", { token, method: "GET" });
+      const { data } = await fetchJson("/api/ai/conversations", {
+        method: "GET",
+        token: token.trim(),
+        timeoutMs: 15000,
+      });
       setConversations(data?.conversations || []);
+      setStatusLine(`Loaded ${data?.conversations?.length ?? 0} conversations.`);
     } catch (e) {
-      setStatusLine(`Failed to load conversations: ${e?.data?.error || e?.message || String(e)}`);
+      const detail = e?.data ? JSON.stringify(e.data) : e?.raw ? String(e.raw) : "";
+      setStatusLine(
+        `Failed to load conversations: ${e?.message || String(e)}${e?.status ? ` (HTTP ${e.status})` : ""}${
+          detail ? ` | ${detail}` : ""
+        }`
+      );
     } finally {
       setLoadingConvos(false);
     }
   }
 
   async function ensureAgentConversation(agentId) {
-    // If agent already mapped, return it.
     const existing = roomMap?.[agentId];
     if (existing) return existing;
 
-    // Otherwise create a new persistent conversation in DB.
     const agent = AGENTS.find((a) => a.id === agentId);
     const title = `${agent?.name || agentId} — ${roomName}`;
-    const created = await apiFetch("/api/ai/conversations", {
-      token,
+
+    const { data: created } = await fetchJson("/api/ai/conversations", {
+      token: token.trim(),
       method: "POST",
       body: { title },
+      timeoutMs: 15000,
     });
 
     const convoId = created?.conversation?.id;
-    if (!convoId) throw new Error("Conversation create failed (no id)");
+    if (!convoId) throw new Error("Conversation create failed (missing id)");
 
-    // Prime the agent personality (stored as a hidden [[SYSTEM]] message).
+    // Prime system identity (stored; hidden from UI)
     const sys = agent?.system || `[[SYSTEM]] You are ${agentId}.`;
     try {
-      await apiFetch(`/api/ai/conversations/${convoId}/messages`, {
-        token,
+      await fetchJson(`/api/ai/conversations/${convoId}/messages`, {
+        token: token.trim(),
         method: "POST",
         body: { message: sys },
+        timeoutMs: 20000,
       });
-    } catch (e) {
-      // If priming fails, still keep convo id; user can proceed.
-      console.warn("Priming failed:", e);
+    } catch {
+      // Non-fatal: room can still function without priming.
     }
 
     setRoomMap((prev) => ({ ...prev, [agentId]: convoId }));
@@ -280,7 +362,6 @@ export default function AiWarRoomPage() {
   }
 
   async function loadAgentMessages(agentId) {
-    if (!token) return;
     const convoId = roomMap?.[agentId];
     if (!convoId) return;
 
@@ -290,9 +371,10 @@ export default function AiWarRoomPage() {
     }));
 
     try {
-      const data = await apiFetch(`/api/ai/conversations/${convoId}/messages`, {
-        token,
+      const { data } = await fetchJson(`/api/ai/conversations/${convoId}/messages`, {
+        token: token.trim(),
         method: "GET",
+        timeoutMs: 15000,
       });
       setThreads((prev) => ({
         ...prev,
@@ -301,16 +383,21 @@ export default function AiWarRoomPage() {
     } catch (e) {
       setThreads((prev) => ({
         ...prev,
-        [agentId]: { loading: false, messages: prev?.[agentId]?.messages || [], error: e },
+        [agentId]: { loading: false, messages: prev?.[agentId]?.messages || [] },
       }));
-      setStatusLine(`Failed to load ${agentId} messages: ${e?.data?.error || e?.message || String(e)}`);
+      const detail = e?.data ? JSON.stringify(e.data) : e?.raw ? String(e.raw) : "";
+      setStatusLine(
+        `Failed to load ${agentId} messages: ${e?.message || String(e)}${e?.status ? ` (HTTP ${e.status})` : ""}${
+          detail ? ` | ${detail}` : ""
+        }`
+      );
     }
   }
 
   async function initRoom() {
-    // Ensures convos exist for selected agents and loads threads.
-    if (!token) {
-      setStatusLine("Missing token. Log in or paste your Bearer token first.");
+    setStatusLine("");
+    if (!token.trim()) {
+      setStatusLine("Missing token. Log in first.");
       return;
     }
     setStatusLine("Initializing room…");
@@ -318,13 +405,12 @@ export default function AiWarRoomPage() {
       for (const agentId of selectedAgentsArr) {
         await ensureAgentConversation(agentId);
       }
-      // Load threads after mapping
       for (const agentId of selectedAgentsArr) {
         await loadAgentMessages(agentId);
       }
       setStatusLine("Room ready.");
     } catch (e) {
-      setStatusLine(`Init failed: ${e?.data?.error || e?.message || String(e)}`);
+      setStatusLine(`Init failed: ${e?.message || String(e)}`);
     }
   }
 
@@ -341,28 +427,26 @@ export default function AiWarRoomPage() {
   function openAgent(agentId) {
     setActiveAgent(agentId);
     setActiveView("agent");
-    // Lazy-load messages if conversation exists
     setTimeout(() => loadAgentMessages(agentId), 0);
   }
 
   async function sendToAgents(message) {
-    if (!token) {
-      setStatusLine("Missing token. Log in or paste your Bearer token first.");
+    setStatusLine("");
+    if (!token.trim()) {
+      setStatusLine("Missing token. Log in first.");
       return;
     }
     if (!message.trim()) return;
 
     setSending(true);
-    setStatusLine("");
     try {
-      // Ensure conversations exist
       const agentIds = selectedAgentsArr;
-      const convoIds = {};
-      for (const a of agentIds) {
-        convoIds[a] = await ensureAgentConversation(a);
-      }
 
-      // Optimistic UI: append user msg into each agent thread immediately
+      // Ensure convos exist
+      const convoIds = {};
+      for (const a of agentIds) convoIds[a] = await ensureAgentConversation(a);
+
+      // Optimistic local append (user)
       const nowIso = new Date().toISOString();
       setThreads((prev) => {
         const next = { ...prev };
@@ -370,44 +454,36 @@ export default function AiWarRoomPage() {
           const cur = next[a]?.messages || [];
           next[a] = {
             ...(next[a] || {}),
-            messages: [
-              ...cur,
-              { role: "user", content: message, created_at: nowIso },
-            ],
+            messages: [...cur, { role: "user", content: message, created_at: nowIso }],
           };
         }
         return next;
       });
 
-      // Send to each agent sequentially (deluxe stability; avoids burst limits)
+      // Sequential send (stability > speed)
       for (const a of agentIds) {
         const cid = convoIds[a];
-
-        // Call backend (which also persists assistant reply)
-        await apiFetch(`/api/ai/conversations/${cid}/messages`, {
-          token,
+        await fetchJson(`/api/ai/conversations/${cid}/messages`, {
+          token: token.trim(),
           method: "POST",
           body: { message },
+          timeoutMs: 45000,
         });
-
-        // Re-load that agent thread so UI matches DB state exactly
         await loadAgentMessages(a);
       }
 
       setStatusLine("Sent to selected AI.");
     } catch (e) {
-      setStatusLine(`Send failed: ${e?.data?.error || e?.message || String(e)}`);
+      const detail = e?.data ? JSON.stringify(e.data) : e?.raw ? String(e.raw) : "";
+      setStatusLine(
+        `Send failed: ${e?.message || String(e)}${e?.status ? ` (HTTP ${e.status})` : ""}${
+          detail ? ` | ${detail}` : ""
+        }`
+      );
     } finally {
       setSending(false);
     }
   }
-
-  const activeAgentObj = useMemo(
-    () => AGENTS.find((a) => a.id === activeAgent) || AGENTS[0],
-    [activeAgent]
-  );
-
-  const activeThread = threads?.[activeAgent]?.messages || [];
 
   return (
     <div className="min-h-screen w-full bg-black text-zinc-100">
@@ -416,27 +492,12 @@ export default function AiWarRoomPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">AI War Room</h1>
             <p className="mt-1 text-sm text-zinc-400">
-              Persistent, auth-backed, multi-agent chat. No placeholders.
+              Persistent multi-agent chat with real error reporting (no silent buffering).
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => refreshConversations()}
-              className="rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm hover:bg-zinc-900"
-              disabled={loadingConvos}
-              title="Loads your DB conversations list"
-            >
-              {loadingConvos ? "Loading…" : "Refresh Convos"}
-            </button>
-            <button
-              onClick={() => initRoom()}
-              className="rounded-md bg-white px-3 py-2 text-sm text-black hover:bg-zinc-200"
-              disabled={sending}
-              title="Creates (if needed) and primes selected agents, then loads threads"
-            >
-              Initialize Room
-            </button>
+          <div className="text-xs text-zinc-500">
+            Token: <span className="text-zinc-300">{token ? redactToken(token) : "none"}</span>{" "}
+            {tokenSaved && token ? <span className="ml-2">(saved)</span> : null}
           </div>
         </div>
 
@@ -445,7 +506,7 @@ export default function AiWarRoomPage() {
           <div className="rounded-lg border border-zinc-900 bg-zinc-950 p-4">
             <div className="text-sm font-medium">Token</div>
             <p className="mt-1 text-xs text-zinc-500">
-              Paste your Bearer token here or log in below. Stored locally on this device.
+              Paste token or log in. Use <span className="text-zinc-300">Test /me</span> to confirm.
             </p>
             <textarea
               value={token}
@@ -453,26 +514,29 @@ export default function AiWarRoomPage() {
                 setToken(e.target.value);
                 setTokenSaved(false);
               }}
-              placeholder="Paste token here (starts with eyJ...)"
+              placeholder="Paste token (eyJ...)"
               className="mt-3 h-24 w-full resize-none rounded-md border border-zinc-800 bg-black p-2 text-xs text-zinc-100 outline-none focus:border-zinc-600"
             />
-            <div className="mt-3 flex items-center justify-between gap-2">
+            <div className="mt-3 flex items-center gap-2">
               <button
                 onClick={handleSaveToken}
                 className="rounded-md border border-zinc-800 bg-black px-3 py-2 text-sm hover:bg-zinc-900"
               >
                 Save Token
               </button>
-              <div className="text-xs text-zinc-500">
-                {tokenSaved && token ? `Saved: ${redactToken(token)}` : token ? "Not saved" : "No token"}
-              </div>
+              <button
+                onClick={testMe}
+                className="rounded-md bg-white px-3 py-2 text-sm text-black hover:bg-zinc-200"
+              >
+                Test /api/auth/me
+              </button>
             </div>
           </div>
 
           <div className="rounded-lg border border-zinc-900 bg-zinc-950 p-4">
             <div className="text-sm font-medium">Login (fast)</div>
             <p className="mt-1 text-xs text-zinc-500">
-              Uses your existing <code className="text-zinc-300">/api/auth/login</code> and saves token.
+              Uses <span className="text-zinc-300">POST /api/auth/login</span> and saves token.
             </p>
             <div className="mt-3 space-y-2">
               <input
@@ -501,7 +565,7 @@ export default function AiWarRoomPage() {
           <div className="rounded-lg border border-zinc-900 bg-zinc-950 p-4">
             <div className="text-sm font-medium">Room Controls</div>
             <p className="mt-1 text-xs text-zinc-500">
-              Select one AI for direct chat or multiple for a discussion. Each agent is persistent.
+              Select AI and click <span className="text-zinc-300">Initialize Room</span>.
             </p>
             <div className="mt-3 flex items-center gap-2">
               <input
@@ -511,9 +575,7 @@ export default function AiWarRoomPage() {
                 placeholder="Room name"
               />
               <button
-                onClick={() => {
-                  setActiveView("room");
-                }}
+                onClick={() => setActiveView("room")}
                 className="rounded-md border border-zinc-800 bg-black px-3 py-2 text-sm hover:bg-zinc-900"
               >
                 Room
@@ -535,9 +597,7 @@ export default function AiWarRoomPage() {
                   >
                     <div>
                       <div className="text-sm font-medium">{a.name}</div>
-                      <div className={clsx("text-xs", on ? "text-black/70" : "text-zinc-500")}>
-                        {a.tagline}
-                      </div>
+                      <div className={clsx("text-xs", on ? "text-black/70" : "text-zinc-500")}>{a.tagline}</div>
                     </div>
                     <div className={clsx("text-xs font-semibold", on ? "text-black" : "text-zinc-400")}>
                       {on ? "ON" : "OFF"}
@@ -546,38 +606,49 @@ export default function AiWarRoomPage() {
                 );
               })}
             </div>
+
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={initRoom}
+                disabled={sending}
+                className="w-full rounded-md bg-white px-3 py-2 text-sm text-black hover:bg-zinc-200 disabled:opacity-60"
+              >
+                Initialize Room
+              </button>
+              <button
+                onClick={refreshConversations}
+                disabled={loadingConvos}
+                className="rounded-md border border-zinc-800 bg-black px-3 py-2 text-sm hover:bg-zinc-900"
+              >
+                {loadingConvos ? "Loading…" : "Refresh Convos"}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Status box */}
+        {statusLine ? (
+          <div className="mt-4 rounded-lg border border-zinc-800 bg-black p-3 text-xs text-zinc-200 whitespace-pre-wrap">
+            {statusLine}
+          </div>
+        ) : null}
 
         {/* Main Layout */}
         <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Sidebar */}
           <div className="lg:col-span-4 rounded-lg border border-zinc-900 bg-zinc-950 p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">Conversations (DB)</div>
-              <button
-                onClick={() => refreshConversations()}
-                className="rounded-md border border-zinc-800 bg-black px-2 py-1 text-xs hover:bg-zinc-900"
-              >
-                Refresh
-              </button>
-            </div>
+            <div className="text-sm font-medium">Conversations (DB)</div>
             <div className="mt-2 text-xs text-zinc-500">
-              This is your raw DB conversation list (all titles). Your multi-agent room uses per-agent conversations.
+              Raw DB list. Your multi-agent room maps 1 conversation per agent.
             </div>
 
             <div className="mt-3 space-y-2 max-h-[340px] overflow-auto pr-1">
               {conversations?.length ? (
                 conversations.map((c) => (
-                  <div
-                    key={c.id}
-                    className="rounded-md border border-zinc-900 bg-black px-3 py-2"
-                  >
+                  <div key={c.id} className="rounded-md border border-zinc-900 bg-black px-3 py-2">
                     <div className="text-sm font-medium">{c.title}</div>
                     <div className="mt-1 text-xs text-zinc-500">
-                      Updated: {fmtTime(c.updated_at)}{" "}
-                      <span className="text-zinc-700">•</span> ID:{" "}
-                      <span className="text-zinc-400">{c.id}</span>
+                      Updated: {fmtTime(c.updated_at)} • ID: <span className="text-zinc-400">{c.id}</span>
                     </div>
                   </div>
                 ))
@@ -589,7 +660,7 @@ export default function AiWarRoomPage() {
             </div>
 
             <div className="mt-4 border-t border-zinc-900 pt-4">
-              <div className="text-sm font-medium">Your Room Map</div>
+              <div className="text-sm font-medium">Room Map</div>
               <div className="mt-2 space-y-2">
                 {selectedAgentObjs.map((a) => (
                   <div
@@ -599,7 +670,7 @@ export default function AiWarRoomPage() {
                     <div className="min-w-0">
                       <div className="text-sm font-medium">{a.name}</div>
                       <div className="truncate text-xs text-zinc-500">
-                        {roomMap?.[a.id] ? `Convo: ${roomMap[a.id]}` : "Not created yet (Initialize Room)"}
+                        {roomMap?.[a.id] ? `Convo: ${roomMap[a.id]}` : "Not created yet"}
                       </div>
                     </div>
                     <button
@@ -623,7 +694,7 @@ export default function AiWarRoomPage() {
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">
                   {activeView === "room"
-                    ? `Broadcasts your message to: ${selectedAgentObjs.map((a) => a.name).join(", ")}`
+                    ? `Broadcasts to: ${selectedAgentObjs.map((a) => a.name).join(", ")}`
                     : activeAgentObj?.tagline}
                 </div>
               </div>
@@ -654,7 +725,6 @@ export default function AiWarRoomPage() {
               </div>
             </div>
 
-            {/* Messages */}
             <div className="mt-4 h-[520px] overflow-auto rounded-md border border-zinc-900 bg-black p-4">
               {activeView === "room" ? (
                 mergedRoom.length ? (
@@ -672,68 +742,46 @@ export default function AiWarRoomPage() {
                           )}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="text-xs font-semibold text-zinc-400">
-                              {isUser ? "You" : label}
-                            </div>
+                            <div className="text-xs font-semibold text-zinc-400">{isUser ? "You" : label}</div>
                             <div className="text-[10px] text-zinc-600">{fmtTime(m.created_at)}</div>
                           </div>
-                          <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-100">
-                            {m.content}
-                          </div>
+                          <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-100">{m.content}</div>
                         </div>
                       );
                     })}
                     <div ref={bottomRef} />
                   </div>
                 ) : (
-                  <div className="text-sm text-zinc-500">
-                    No messages yet. Click <span className="text-zinc-200">Initialize Room</span>, then send a message.
-                  </div>
+                  <div className="text-sm text-zinc-500">No messages yet. Initialize Room, then send a message.</div>
                 )
-              ) : (
-                <>
-                  <div className="mb-3 rounded-md border border-zinc-900 bg-zinc-950 p-3">
-                    <div className="text-sm font-medium">{activeAgentObj?.name}</div>
-                    <div className="mt-1 text-xs text-zinc-500">{activeAgentObj?.tagline}</div>
-                  </div>
-
-                  {threads?.[activeAgent]?.loading ? (
-                    <div className="text-sm text-zinc-500">Loading…</div>
-                  ) : activeThread.length ? (
-                    <div className="space-y-3">
-                      {activeThread
-                        .filter((m) => !(typeof m?.content === "string" && m.content.startsWith("[[SYSTEM]]")))
-                        .map((m, idx) => (
-                          <div
-                            key={`${idx}-${m.created_at}`}
-                            className={clsx(
-                              "rounded-md border px-3 py-2",
-                              m.role === "user" ? "border-zinc-800 bg-zinc-950" : "border-zinc-900 bg-black"
-                            )}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="text-xs font-semibold text-zinc-400">
-                                {m.role === "user" ? "You" : activeAgentObj?.name}
-                              </div>
-                              <div className="text-[10px] text-zinc-600">{fmtTime(m.created_at)}</div>
-                            </div>
-                            <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-100">
-                              {m.content}
-                            </div>
+              ) : activeThread.length ? (
+                <div className="space-y-3">
+                  {activeThread
+                    .filter((m) => !(typeof m?.content === "string" && m.content.startsWith("[[SYSTEM]]")))
+                    .map((m, idx) => (
+                      <div
+                        key={`${idx}-${m.created_at}`}
+                        className={clsx(
+                          "rounded-md border px-3 py-2",
+                          m.role === "user" ? "border-zinc-800 bg-zinc-950" : "border-zinc-900 bg-black"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs font-semibold text-zinc-400">
+                            {m.role === "user" ? "You" : activeAgentObj?.name}
                           </div>
-                        ))}
-                      <div ref={bottomRef} />
-                    </div>
-                  ) : (
-                    <div className="text-sm text-zinc-500">
-                      No messages loaded. Click <span className="text-zinc-200">Initialize Room</span> first.
-                    </div>
-                  )}
-                </>
+                          <div className="text-[10px] text-zinc-600">{fmtTime(m.created_at)}</div>
+                        </div>
+                        <div className="mt-2 whitespace-pre-wrap text-sm text-zinc-100">{m.content}</div>
+                      </div>
+                    ))}
+                  <div ref={bottomRef} />
+                </div>
+              ) : (
+                <div className="text-sm text-zinc-500">No messages loaded. Initialize Room first.</div>
               )}
             </div>
 
-            {/* Composer */}
             <div className="mt-4">
               <div className="flex items-end gap-2">
                 <textarea
@@ -754,7 +802,6 @@ export default function AiWarRoomPage() {
                     if (activeView === "room") {
                       await sendToAgents(msg);
                     } else {
-                      // single agent send
                       setSelectedAgents((prev) => {
                         const next = new Set(prev);
                         next.add(activeAgent);
@@ -769,26 +816,10 @@ export default function AiWarRoomPage() {
                   {sending ? "Sending…" : "Send"}
                 </button>
               </div>
-
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="text-xs text-zinc-500">
-                  Tip: Room View broadcasts one message to multiple AI, storing each agent’s history persistently.
-                </div>
-                <div className="text-xs text-zinc-400">{statusLine}</div>
+              <div className="mt-3 text-xs text-zinc-600">
+                Multi-agent = one persistent DB conversation per agent, merged into one timeline.
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Footer notes */}
-        <div className="mt-6 text-xs text-zinc-600">
-          <div>
-            Multi-agent is implemented as <span className="text-zinc-300">one conversation per agent</span> (persisted in DB),
-            merged into a single UI timeline. This avoids any additional backend orchestration and stays fully persistent.
-          </div>
-          <div className="mt-1">
-            If you want a true “single DB conversation with multiple assistant identities,” we can add an optional
-            <span className="text-zinc-300"> message metadata</span> column and a backend fan-out route next.
           </div>
         </div>
       </div>

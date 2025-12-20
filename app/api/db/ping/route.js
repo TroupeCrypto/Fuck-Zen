@@ -1,7 +1,9 @@
+// /app/api/db/ping/route.js
 export const runtime = "nodejs";
 
 import { json, serverError } from "../../_utils/respond.js";
 import { queryOne } from "../../../../lib/db/query.js";
+import { assertDbReady } from "../../../../lib/db/pool.js";
 
 /**
  * Parse a database URL and return non-sensitive connection details for diagnostics.
@@ -26,6 +28,9 @@ function inspectDbUrl(raw) {
 
 export async function GET() {
   try {
+    // Fail-fast and reset pool on failure (prevents “poisoned pool” loops).
+    await assertDbReady();
+
     const raw = process.env.DATABASE_URL || "";
     const inspected = inspectDbUrl(raw);
 

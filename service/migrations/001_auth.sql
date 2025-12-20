@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS user_roles (
   UNIQUE (user_id, role_id)
 );
 
--- Seed baseline role
+-- Seed baseline role (additional roles can be managed via standard inserts)
 INSERT INTO roles (name)
 SELECT 'user'
 WHERE NOT EXISTS (SELECT 1 FROM roles WHERE name = 'user');

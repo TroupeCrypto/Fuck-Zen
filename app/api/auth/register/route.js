@@ -19,7 +19,7 @@ function corsHeaders(req) {
     .filter(Boolean);
 
   const origin = req.headers.get("origin") || "";
-  const fallbackOrigin = allowed[0] || process.env.DEFAULT_CORS_ORIGIN || "*";
+  const fallbackOrigin = allowed[0] || process.env.DEFAULT_CORS_ORIGIN || "https://fuck-zen.vercel.app";
 
   const allowOrigin = allowed.includes("*")
     ? "*"
@@ -143,7 +143,7 @@ export async function POST(req) {
     const { rows } = await pool.query(
       `insert into public.users (email, password_hash, display_name)
        values ($1, $2, $3)
-       returning id, email, display_name, role`,
+       returning id, email, display_name`,
       [email, passwordHash, displayName]
     );
 

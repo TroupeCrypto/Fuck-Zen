@@ -19,7 +19,7 @@ function corsHeaders(req) {
     .filter(Boolean);
 
   const origin = req.headers.get("origin") || "";
-  const fallbackOrigin = allowed[0] || process.env.DEFAULT_CORS_ORIGIN || "https://fuck-zen.vercel.app";
+  const fallbackOrigin = process.env.DEFAULT_CORS_ORIGIN || allowed[0] || "*";
 
   const allowOrigin = allowed.includes("*")
     ? "*"
@@ -152,7 +152,7 @@ export async function POST(req) {
       return jsonResponse(500, { ok: false, error: "Failed to create user." }, cors);
     }
 
-    const role = (await ensureUserRole(pool, user.id)) || user.role || "user";
+    const role = (await ensureUserRole(pool, user.id)) || "user";
 
     return jsonResponse(
       201,

@@ -64,8 +64,9 @@ function verifyJwtHS256(token, secret) {
 }
 
 function getBearerToken(req) {
-  const auth = req.headers.get("authorization") || "";
-  const m = auth.match(/^Bearer\s+(.+)$/i);
+  const auth = req.headers.get("authorization");
+  const authValue = typeof auth === "string" ? auth : auth?.message || String(auth || "");
+  const m = authValue.match(/^Bearer\s+(.+)$/i);
   return m ? m[1].trim() : "";
 }
 

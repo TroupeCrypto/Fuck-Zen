@@ -133,7 +133,7 @@ npm start
 
 ### API: Register User
 ```bash
-curl -X POST https://fuck-zen.vercel.app/api/auth/register \
+curl -X POST https://your-deployment.example.com/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"supersecure","display_name":"New User"}'
 ```

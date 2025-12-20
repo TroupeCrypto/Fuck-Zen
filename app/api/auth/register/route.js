@@ -19,11 +19,13 @@ function corsHeaders(req) {
     .filter(Boolean);
 
   const origin = req.headers.get("origin") || "";
+  const fallbackOrigin = allowed[0] || process.env.DEFAULT_CORS_ORIGIN || "*";
+
   const allowOrigin = allowed.includes("*")
     ? "*"
     : allowed.includes(origin)
       ? origin
-      : allowed[0] || "https://fuck-zen.vercel.app";
+      : fallbackOrigin;
 
   return {
     "access-control-allow-origin": allowOrigin,
@@ -44,8 +46,9 @@ function normalizeDisplayName(raw) {
   return val.length ? val : null;
 }
 
+const EMAIL_RE = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return EMAIL_RE.test(email);
 }
 
 async function ensureUserRole(pool, userId) {
@@ -130,7 +133,12 @@ export async function POST(req) {
 
   try {
     const pool = getPool();
-    const passwordHash = hashPassword(password);
+    let passwordHash;
+    try {
+      passwordHash = hashPassword(password);
+    } catch {
+      return jsonResponse(500, { ok: false, error: "Failed to hash password." }, cors);
+    }
 
     const { rows } = await pool.query(
       `insert into public.users (email, password_hash, display_name)
@@ -163,7 +171,6 @@ export async function POST(req) {
     if (e?.code === "23505") {
       return jsonResponse(409, { ok: false, error: "Email already registered" }, cors);
     }
-    const detail = process.env.NODE_ENV === "production" ? undefined : e?.message || String(e);
-    return jsonResponse(500, { ok: false, error: "Server error.", ...(detail ? { detail } : {}) }, cors);
+    return jsonResponse(500, { ok: false, error: "Server error." }, cors);
   }
 }

@@ -100,6 +100,47 @@ npm start
   curl -X GET https://your-deployment.example.com/api/auth/me \
     -H "Authorization: Bearer <token>"
   ```
+## Auth Verification (Post-Deploy)
+
+Final verification (2 requests, <1 minute)
+
+1) Disabled legacy user → 403
+
+POST https://fuck-zen.vercel.app/api/auth/login
+
+Body:
+{ "email": "user@example.com", "password": "anything" }
+
+Expected response:
+{ "ok": false, "error": "User disabled" }
+
+HTTP Status: 403
+
+---
+
+2) Real user still works → 200
+
+POST https://fuck-zen.vercel.app/api/auth/login
+
+Body:
+{ "email": "ziggy+auth@troupeinc.com", "password": "Ziggy123!" }
+
+Expected response:
+{ "ok": true, "token": "..." }
+
+HTTP Status: 200
+
+---
+
+(Optional) Verify session
+
+GET https://fuck-zen.vercel.app/api/auth/me
+
+Header:
+Authorization: Bearer <token>
+
+Expected response:
+200 OK with authenticated user payload
 
 ## Project Structure
 

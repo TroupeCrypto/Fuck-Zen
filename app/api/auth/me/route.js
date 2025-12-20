@@ -1,3 +1,4 @@
+//// FILE: app/api/auth/me/route.js
 // app/api/auth/me/route.js
 export const runtime = "nodejs";
 
@@ -18,7 +19,14 @@ function corsHeaders(req) {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const origin = req.headers.get("origin") || "";
+  const origin = (() => {
+    try {
+      return req.headers.get("origin") || "";
+    } catch {
+      return "";
+    }
+  })();
+
   const allowOrigin = allowed.includes("*")
     ? "*"
     : allowed.includes(origin)
@@ -64,10 +72,18 @@ function verifyJwtHS256(token, secret) {
 }
 
 function getBearerToken(req) {
-  const auth = req.headers.get("authorization");
-  const authValue = typeof auth === "string" ? auth : auth?.message || String(auth || "");
-  const m = authValue.match(/^Bearer\s+(.+)$/i);
-  return m ? m[1].trim() : "";
+  let raw;
+  try {
+    raw = req.headers.get("authorization");
+  } catch (err) {
+    raw = err?.message || String(err);
+  }
+
+  const authValue =
+    typeof raw === "string" ? raw : (raw?.message || String(raw || ""));
+
+  const m = authValue?.match?.(/^Bearer\s+(.+)$/i);
+  return m ? String(m[1] || "").trim() : "";
 }
 
 export async function OPTIONS(req) {
@@ -129,11 +145,6 @@ export async function GET(req) {
           display_name: user.display_name || null,
           role: user.role || "user",
           created_at: user.created_at,
-        },
-        token: {
-          iat: payload?.iat || null,
-          exp: payload?.exp || null,
-          role: payload?.role || null,
         },
       },
       cors

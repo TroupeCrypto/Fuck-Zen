@@ -2,6 +2,7 @@
 export const runtime = "nodejs";
 
 import { hashPassword } from "../../../../lib/auth/users.js";
+import { checkAuthRateLimit } from "../../../../lib/auth/ratelimit.js";
 import { getPool } from "../../../../lib/db/pool.js";
 
 function jsonResponse(status, body, extraHeaders = {}) {
@@ -109,6 +110,11 @@ export async function GET(req) {
 
 export async function POST(req) {
   const cors = corsHeaders(req);
+
+  const rate = await checkAuthRateLimit("register", req, { limit: 5, windowMs: 60_000 });
+  if (!rate.allowed) {
+    return jsonResponse(429, { ok: false, error: "Rate limited. Try again soon." }, cors);
+  }
 
   let body;
   try {

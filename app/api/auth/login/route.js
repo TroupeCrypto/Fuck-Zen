@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import crypto from "crypto";
 import { getPool } from "../../../../lib/db/pool.js";
+import { checkAuthRateLimit } from "../../../../lib/auth/ratelimit.js";
 
 function jsonResponse(status, body, extraHeaders = {}) {
   const headers = {
@@ -118,6 +119,11 @@ export async function POST(req) {
   const cors = corsHeaders(req);
 
   try {
+    const rate = await checkAuthRateLimit("login", req, { limit: 10, windowMs: 60_000 });
+    if (!rate.allowed) {
+      return jsonResponse(429, { ok: false, error: "Rate limited. Try again soon." }, cors);
+    }
+
     const secret = process.env.JWT_SECRET;
     if (!secret || String(secret).trim().length < 16) {
       return jsonResponse(
@@ -143,7 +149,7 @@ export async function POST(req) {
 
     const pool = getPool();
     const { rows } = await pool.query(
-      `select id, email, display_name, role, password_hash
+      `select id, email, display_name, role, password_hash, is_active
        from public.users
        where email = $1
        limit 1`,
@@ -151,6 +157,9 @@ export async function POST(req) {
     );
 
     const user = rows[0];
+    if (user && user.is_active === false) {
+      return jsonResponse(403, { ok: false, error: "User disabled" }, cors);
+    }
     // Do not leak which field failed.
     if (!user || !verifyPassword(password, user.password_hash)) {
       return jsonResponse(401, { ok: false, error: "Invalid credentials." }, cors);

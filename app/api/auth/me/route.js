@@ -103,7 +103,7 @@ export async function GET(req) {
   try {
     const pool = getPool();
     const { rows } = await pool.query(
-      `select id, email, display_name, role, created_at
+      `select id, email, display_name, role, created_at, is_active
        from public.users
        where id = $1
        limit 1`,
@@ -113,6 +113,9 @@ export async function GET(req) {
     const user = rows[0];
     if (!user) {
       return jsonResponse(401, { ok: false, error: "User not found." }, cors);
+    }
+    if (user.is_active === false) {
+      return jsonResponse(403, { ok: false, error: "User disabled" }, cors);
     }
 
     return jsonResponse(

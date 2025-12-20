@@ -80,6 +80,27 @@ npm run build
 npm start
 ```
 
+## Auth Quickstart
+
+- Required env vars: `DATABASE_URL`, `JWT_SECRET`, `PGSSL=1`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+- Register:
+  ```bash
+  curl -X POST https://your-deployment.example.com/api/auth/register \
+    -H "Content-Type: application/json" \
+    -d '{"email":"alice@example.com","password":"supersecure","display_name":"New User"}'
+  ```
+- Login (returns JWT):
+  ```bash
+  curl -X POST https://your-deployment.example.com/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"alice@example.com","password":"supersecure"}'
+  ```
+- Me (requires Bearer token from login):
+  ```bash
+  curl -X GET https://your-deployment.example.com/api/auth/me \
+    -H "Authorization: Bearer <token>"
+  ```
+
 ## Project Structure
 
 ```

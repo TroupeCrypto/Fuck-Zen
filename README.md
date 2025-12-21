@@ -2,6 +2,8 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
+# Troupe Inc. - "Fuck-Zen" Project name has been migrated fo "TrouPeace" with irony and intent.
+
 # Troupe Inc. - Executive War Room
 
 This is the Tier 1 Executive Roundtable and Digital Headquarters for Troupe Inc., featuring an advanced AI-powered command line interface with chat capabilities and comprehensive organizational structure.

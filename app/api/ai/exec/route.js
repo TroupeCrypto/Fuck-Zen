@@ -89,6 +89,8 @@ function parseBearer(req) {
   return m ? String(m[1] || "").trim() : null;
 }
 
+const AUTH_DISABLED_FOR_BRINGUP = true; // TEMP: AUTH DISABLED FOR BRING-UP / VISUAL VERIFICATION
+
 /**
  * IMPORTANT:
  * Your login route may have issued tokens with audience "troupe-war-room" while
@@ -243,14 +245,16 @@ async function callGemini({ model, system, message }) {
 export async function POST(req) {
   try {
     // 1) AUTH
-    const token = parseBearer(req);
-    if (!token) return unauthorized("Missing Bearer token");
+    let session = null;
+    if (!AUTH_DISABLED_FOR_BRINGUP) {
+      const token = parseBearer(req);
+      if (!token) return unauthorized("Missing Bearer token");
 
-    let session;
-    try {
-      session = verifyTokenFlexible(token);
-    } catch {
-      return unauthorized("Invalid or expired token");
+      try {
+        session = verifyTokenFlexible(token);
+      } catch {
+        return unauthorized("Invalid or expired token");
+      }
     }
 
     // 2) BODY
